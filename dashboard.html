@@ -101,14 +101,15 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 .r-badge.auto{background:rgba(234,179,8,.1);color:var(--yellow)}
 
 .r-info{flex:1;min-width:0}
-.r-user{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px}
+.r-user{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .r-user .tag{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:600}
 .r-user .tag.auto{background:rgba(34,197,94,.15);color:var(--green)}
 .r-user .tag.thresh{background:rgba(234,179,8,.15);color:var(--yellow)}
+.r-msg{font-size:13px;color:var(--orange);font-weight:800;max-width:350px;overflow:hidden;text-overflow:ellipsis}
 .r-detail{font-size:10px;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
 .r-link{color:var(--blue);text-decoration:none;font-weight:600;font-size:10px}
 .r-link:hover{text-decoration:underline}
-.r-memo{padding:2px 5px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:10px;width:130px;font-family:inherit}
+.r-memo{padding:2px 5px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:10px;width:180px;font-family:inherit}
 .r-memo:focus{outline:none;border-color:var(--orange)}
 .r-time{font-size:8px;color:var(--muted);white-space:nowrap}
 .r-acts{display:flex;gap:3px}
@@ -415,14 +416,13 @@ function renderRes(){
     const linkBtn=r.channelUrl&&!r.completed?`<a href="${r.channelUrl}" target="_blank" class="rb go">방송국→</a>`:'';
     const memoField=r.collectMessage?`<input class="r-memo" value="${r.message||''}" placeholder="메모..." onchange="updMemo(${r.id},this.value)" onclick="event.stopPropagation()">`:'';
     const tagHtml=isAuto?'<span class="tag thresh">자동등록</span>':'<span class="tag auto">매칭</span>';
+    const msgDisplay=r.message?`<span class="r-msg">"${r.message}"</span>`:'';
+    const memoLine=r.collectMessage&&!r.message?`<div class="r-detail">${memoField}</div>`:'';
     return`<div class="r-card ${r.completed?'done':''}">
       <span class="r-badge ${badgeClass}">⭐${r.amount} ${r.templateName}</span>
       <div class="r-info">
-        <div class="r-user">${r.userNickname||r.userId||'?'} ${tagHtml}</div>
-        <div class="r-detail">
-          ${r.channelUrl?`<a href="${r.channelUrl}" target="_blank" class="r-link">🔗${r.userId}</a>`:''}
-          ${r.message?`📝 <b>${r.message}</b>`:memoField}
-        </div>
+        <div class="r-user">${r.userNickname||r.userId||'?'} ${msgDisplay} ${tagHtml}</div>
+        ${memoLine}
       </div>
       <div class="stamp">완료</div>
       <div class="r-time">${r.createdAt}</div>
@@ -502,7 +502,7 @@ function addBLog(b){
   const tp=b.type||'balloon';
   const mTitle=b.missionTitle?` [${b.missionTitle}]`:'';
   const msgHtml=b.message?`<span style="color:var(--orange);font-weight:600;margin-left:4px">"${b.message}"</span>`:'';
-  el.insertAdjacentHTML('afterbegin',`<div class="be"><span class="a">⭐${b.amount}</span><span class="tp" style="${tc[tp]||''}">${tn[tp]||tp}${mTitle}</span><span class="n">${b.userNickname}</span>${msgHtml}<a href="${b.channelUrl||'#'}" target="_blank" class="r-link">${b.userId||''}</a><span class="t">${b.time}</span></div>`);
+  el.insertAdjacentHTML('afterbegin',`<div class="be"><span class="a">⭐${b.amount}</span><span class="tp" style="${tc[tp]||''}">${tn[tp]||tp}${mTitle}</span><span class="n">${b.userNickname}</span>${msgHtml}<span class="t">${b.time}</span></div>`);
   while(el.children.length>100)el.lastChild.remove();
 }
 

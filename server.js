@@ -77,6 +77,15 @@ let sseClients = [];
 let unknownPackets = [];
 let recentDonors = {};  // userId → { timestamp, resultId, nick, amount } (0018 후 0005 연결용)
 
+// 중복 패킷 방지 (SOOP은 같은 패킷을 3번 보냄)
+const seenPackets = new Set();
+function isDuplicate(key) {
+  if (seenPackets.has(key)) return true;
+  seenPackets.add(key);
+  setTimeout(() => seenPackets.delete(key), 5000);
+  return false;
+}
+
 const KNOWN_TYPES = new Set([
   '0000','0001','0002','0004','0005','0007','0012',
   '0018','0087','0093','0104','0109','0105','0127'
@@ -161,7 +170,11 @@ function parse0121(rawStr) {
         });
 
         // 미션 매칭 시스템에 연동
-        matchBalloon(uid, nick, amt, 'mission');
+        const result = matchBalloon(uid, nick, amt, 'mission');
+
+        // 이 유저의 다음 채팅을 메시지로 연결 (대결미션은 별풍 후 직접 타이핑)
+        recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
+        setTimeout(() => { delete recentDonors[uid]; }, 60000);
 
         const entry = {
           time: now(),
@@ -212,6 +225,7 @@ async function connectToSoop() {
     soopChat.on(SoopChatEvent.TEXT_DONATION, (d) => {
       const amt = parseInt(d.amount) || 0;
       const uid = d.from, nick = d.fromUsername;
+      if (isDuplicate(`balloon_${uid}_${amt}`)) return;  // 3x 중복 방지
       console.log(`⭐ 별풍선 ${nick}(${uid}) → ${amt}개`);
       broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'balloon' });
       const result = matchBalloon(uid, nick, amt, 'balloon');
@@ -219,7 +233,7 @@ async function connectToSoop() {
       // 직전 채팅에서 메시지 찾기 (메시지가 후원보다 먼저 올 수 있음)
       let foundMsg = null;
       if (global._recentChats) {
-        const recent = global._recentChats.find(c => c.userId === uid && (Date.now() - c.ts) < 10000);
+        const recent = global._recentChats.find(c => c.userId === uid && (Date.now() - c.ts) < 60000);
         if (recent) {
           foundMsg = recent.comment;
           console.log(`💬 직전 채팅에서 TTS 연결! ${nick}(${uid}): "${foundMsg}"`);
@@ -228,10 +242,10 @@ async function connectToSoop() {
         }
       }
 
-      // 직전에 못 찾았으면 후속 채팅 대기 (10초)
+      // 직전에 못 찾았으면 후속 채팅 대기 (60초)
       if (!foundMsg) {
         recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
-        setTimeout(() => { delete recentDonors[uid]; }, 10000);
+        setTimeout(() => { delete recentDonors[uid]; }, 60000);
       }
     });
 
@@ -239,6 +253,7 @@ async function connectToSoop() {
     soopChat.on(SoopChatEvent.AD_BALLOON_DONATION, (d) => {
       const amt = parseInt(d.amount) || 0;
       const uid = d.from, nick = d.fromUsername;
+      if (isDuplicate(`adballoon_${uid}_${amt}`)) return;
       console.log(`🎈 애드벌룬 ${nick}(${uid}) → ${amt}개`);
       broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'adballoon' });
       matchBalloon(uid, nick, amt, 'adballoon');
@@ -248,6 +263,7 @@ async function connectToSoop() {
     soopChat.on(SoopChatEvent.VIDEO_DONATION, (d) => {
       const amt = parseInt(d.amount) || 0;
       const uid = d.from, nick = d.fromUsername;
+      if (isDuplicate(`video_${uid}_${amt}`)) return;
       console.log(`🎬 영상풍선 ${nick}(${uid}) → ${amt}개`);
       broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'video' });
       matchBalloon(uid, nick, amt, 'video');
@@ -256,6 +272,7 @@ async function connectToSoop() {
     // UNKNOWN 패킷
     soopChat.on(SoopChatEvent.UNKNOWN, (parts) => {
       const raw = Array.isArray(parts) ? parts.join('|') : String(parts);
+      if (isDuplicate(`unknown_${raw.substring(0, 100)}`)) return;
       const entry = {
         time: now(),
         partsCount: Array.isArray(parts) ? parts.length : 0,
@@ -271,9 +288,17 @@ async function connectToSoop() {
     soopChat.on(SoopChatEvent.CHAT, (d) => {
       const uid = d.userId;
       const msg = d.comment;
+      if (isDuplicate(`chat_${uid}_${msg}`)) return;  // 3x 중복 방지
+
+      // 디버그: 모든 채팅 로그 (후원자 대기 목록과 비교)
+      const waiting = Object.keys(recentDonors);
+      if (waiting.length > 0) {
+        console.log(`💬 채팅수신 ${uid}: "${msg}" (대기중: ${waiting.join(',')})`);
+      }
+
       if (recentDonors[uid] && msg) {
         const donor = recentDonors[uid];
-        console.log(`💬 TTS 메시지 연결! ${donor.nick}(${uid}): "${msg}"`);
+        console.log(`✅ TTS 메시지 연결! ${donor.nick}(${uid}): "${msg}"`);
         // 미션 결과에 메시지 연결
         if (donor.resultId) {
           const r = missionResults.find(r => r.id === donor.resultId);
@@ -297,6 +322,10 @@ async function connectToSoop() {
 
           // 후원 패킷 + 후원 직후 채팅 기록
           if (['0018', '0087', '0105', '0121'].includes(typeCode)) {
+            // RAW 후원패킷 중복 방지
+            const rawHash = str.substring(0, 100);
+            if (isDuplicate(`raw_${typeCode}_${rawHash}`)) return;
+
             const SEP = '\f';
             const parts = str.split(SEP);
             const fieldDump = parts.map((p,i) => `[${i}] = "${p.substring(0,200).replace(/[\x00-\x1f]/g,'·')}"`).join('\n');
@@ -326,38 +355,26 @@ async function connectToSoop() {
           // 모든 채팅을 최근 버퍼에 저장 (후원 전 메시지 확인용)
           if (typeCode === '0005') {
             const SEP = '\f';
-            const parts = str.split(SEP);
-            const chatUserId = parts[2]?.replace(/[\x00-\x1f]/g, '').trim();
-            const chatComment = parts[1]?.replace(/[\x00-\x1f]/g, '').trim();
+            const chatParts = str.split(SEP);
+            const chatUserId = chatParts[2]?.replace(/[\x00-\x1f]/g, '').trim();
+            const chatComment = chatParts[1]?.replace(/[\x00-\x1f]/g, '').trim();
             if (chatUserId && chatComment) {
+              if (isDuplicate(`raw0005_${chatUserId}_${chatComment}`)) return;
               // 최근 채팅 버퍼에 저장 (최대 50개)
               if (!global._recentChats) global._recentChats = [];
               global._recentChats.unshift({ ts: Date.now(), userId: chatUserId, comment: chatComment });
               if (global._recentChats.length > 50) global._recentChats.pop();
             }
-            // 후원 후 채팅 매칭
+            // 후원 후 채팅 매칭 디버그
             if (chatUserId && recentDonors[chatUserId]) {
-              const debugLog = `[${new Date().toISOString()}] CHAT_AFTER_DONATION userId=${chatUserId} msg="${chatComment}"\n${'='.repeat(60)}\n`;
+              const debugLog = `[${new Date().toISOString()}] RAW_CHAT_AFTER_DONATION userId=${chatUserId} msg="${chatComment}"\n${'='.repeat(60)}\n`;
               fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
-            }
-          }
-
-          // 후원 패킷 올 때 직전 채팅도 기록 (메시지가 먼저 올 수 있음)
-          if (typeCode === '0018') {
-            const SEP = '\f';
-            const parts = str.split(SEP);
-            const donorId = parts[2]?.replace(/[\x00-\x1f]/g, '').trim();
-            if (donorId && global._recentChats) {
-              const recent = global._recentChats.filter(c => c.userId === donorId && (Date.now() - c.ts) < 10000);
-              if (recent.length > 0) {
-                const debugLog = `[${new Date().toISOString()}] CHAT_BEFORE_DONATION userId=${donorId}\n${recent.map(c => `  "${c.comment}" (${((Date.now()-c.ts)/1000).toFixed(1)}초 전)`).join('\n')}\n${'='.repeat(60)}\n`;
-                fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
-              }
             }
           }
 
           // 0121 패킷 특별 처리 (도전/대결미션 추정)
           if (typeCode === '0121') {
+            if (isDuplicate(`raw0121_${str.substring(0, 150)}`)) return;
             console.log(`🎲 0121 패킷 감지! 길이: ${str.length}`);
             parse0121(str);
 
