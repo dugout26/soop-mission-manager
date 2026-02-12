@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MK 대결미션 매니저</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080f0a;--card:#0f1a12;--card2:#162219;--blue:#4ade80;--orange:#f97316;--green:#22c55e;--red:#ef4444;--purple:#86efac;--cyan:#6ee7b7;--yellow:#eab308;--text:#f1f4f1;--text2:#88a090;--muted:#557060;--border:#1e3625}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(74,222,128,.04)1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,.04)1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:16px}
+
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.logo{font-family:'Black Han Sans';font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+.logo img{width:32px;height:32px;border-radius:6px}
+.logo-sub{font-size:10px;color:var(--muted)}
+
+.conn{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:11px;flex-wrap:wrap}
+.dot{width:8px;height:8px;border-radius:50%}
+.dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.wait{background:var(--orange);animation:p 1s infinite}
+.dot.off{background:var(--red)}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.3}}
+.ci{padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;width:130px;font-family:inherit}
+.ci:focus{outline:none;border-color:var(--blue)}
+.cb{padding:4px 10px;border-radius:4px;border:1px solid var(--blue);background:rgba(74,222,128,.1);color:var(--blue);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit}
+
+.stats{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.st{flex:1;min-width:100px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.st-l{font-size:9px;color:var(--muted);font-weight:600}
+.st-v{font-size:18px;font-weight:900;margin-top:1px}
+
+.sec{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+.sec h2{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sec h2 .sub{font-size:10px;color:var(--muted);font-weight:400}
+
+/* 자동등록 임계값 */
+.auto-box{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:8px;margin-bottom:12px;flex-wrap:wrap}
+.auto-box label{font-size:11px;font-weight:700;color:var(--yellow)}
+.auto-box input{padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;width:80px;font-family:inherit;text-align:center}
+.auto-box input:focus{outline:none;border-color:var(--yellow)}
+.auto-box .desc{font-size:9px;color:var(--muted)}
+.auto-box button{padding:4px 10px;border-radius:4px;border:1px solid var(--yellow);background:rgba(234,179,8,.1);color:var(--yellow);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit}
+
+/* 미션 등록 */
+.tpl-form{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:2px}
+.fg label{font-size:8px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select{padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-family:inherit}
+.fg input:focus{outline:none;border-color:var(--blue)}
+.chk-group{display:flex;gap:10px;align-items:center}
+.chk-group label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;user-select:none}
+.chk-group input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px}
+.btn-add{padding:6px 14px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+/* 등록된 템플릿 */
+.tpl-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tpl-card{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:10px;position:relative}
+.tpl-card.inactive{opacity:.35}
+.tpl-card.editing{border-color:var(--blue)}
+.tpl-star{font-size:16px;font-weight:900;color:var(--orange);font-family:'Black Han Sans';white-space:nowrap}
+.tpl-name{font-size:12px;font-weight:700}
+.tpl-tags{display:flex;gap:3px;margin-top:2px}
+.tpl-tag{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:600}
+.tpl-tag.domain{background:rgba(59,130,246,.12);color:var(--blue)}
+.tpl-tag.msg{background:rgba(249,115,22,.12);color:var(--orange)}
+.tpl-cond{font-size:9px;color:var(--cyan);margin-top:1px}
+.tpl-actions{margin-left:auto;display:flex;gap:3px}
+.tpl-btn{padding:3px 6px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:9px;cursor:pointer;font-family:inherit}
+.tpl-btn:hover{border-color:var(--muted)}
+.tpl-btn.del{color:var(--red);border-color:rgba(239,68,68,.3)}
+.tpl-btn.edit{color:var(--blue);border-color:rgba(59,130,246,.3)}
+
+/* 편집 인라인 */
+.edit-inline{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.edit-inline input{padding:3px 6px;background:var(--bg);border:1px solid var(--blue);border-radius:3px;color:var(--text);font-size:10px;font-family:inherit}
+.edit-inline input:focus{outline:none}
+.edit-inline button{padding:3px 8px;border-radius:3px;border:none;font-size:9px;font-weight:700;cursor:pointer;font-family:inherit}
+.edit-inline .save{background:var(--blue);color:#fff}
+.edit-inline .cancel{background:var(--border);color:var(--text2)}
+
+/* 결과 */
+.filters{display:flex;gap:3px;margin-bottom:8px}
+.ft{padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:9px;font-weight:600;cursor:pointer;font-family:inherit}
+.ft.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+.results{display:flex;flex-direction:column;gap:4px}
+.r-card{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;transition:all .15s}
+.r-card:hover{border-color:var(--muted)}
+.r-card.done{background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.15)}
+.r-card.done .r-info *{text-decoration:line-through;opacity:.35}
+
+.r-badge{padding:3px 7px;border-radius:3px;font-size:9px;font-weight:800;white-space:nowrap;letter-spacing:.3px}
+.r-badge.balloon{background:rgba(74,222,128,.1);color:var(--blue)}
+.r-badge.adballoon{background:rgba(168,85,247,.1);color:var(--purple)}
+.r-badge.video{background:rgba(6,182,212,.1);color:var(--cyan)}
+.r-badge.mission{background:rgba(234,179,8,.1);color:var(--yellow);border:1px solid rgba(234,179,8,.3)}
+.r-badge.auto{background:rgba(234,179,8,.1);color:var(--yellow)}
+
+.r-info{flex:1;min-width:0}
+.r-user{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px}
+.r-user .tag{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:600}
+.r-user .tag.auto{background:rgba(34,197,94,.15);color:var(--green)}
+.r-user .tag.thresh{background:rgba(234,179,8,.15);color:var(--yellow)}
+.r-detail{font-size:10px;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.r-link{color:var(--blue);text-decoration:none;font-weight:600;font-size:10px}
+.r-link:hover{text-decoration:underline}
+.r-memo{padding:2px 5px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:10px;width:130px;font-family:inherit}
+.r-memo:focus{outline:none;border-color:var(--orange)}
+.r-time{font-size:8px;color:var(--muted);white-space:nowrap}
+.r-acts{display:flex;gap:3px}
+.rb{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
+.rb:hover{border-color:var(--muted);color:var(--text)}
+.rb.go{border-color:var(--blue);color:var(--blue)}
+.rb.ok{border-color:var(--green);color:var(--green)}
+.rb.undo{border-color:var(--orange);color:var(--orange)}
+.rb.del{border-color:var(--red);color:var(--red);padding:4px 6px}
+
+.stamp{display:none;position:absolute;right:50px;top:50%;transform:translateY(-50%) rotate(-12deg);border:2px solid var(--red);color:var(--red);font-family:'Black Han Sans';font-size:16px;padding:1px 12px;border-radius:3px;letter-spacing:2px;opacity:.45;pointer-events:none}
+.r-card.done .stamp{display:block}
+
+/* 로그 */
+.blog{max-height:160px;overflow-y:auto;font-size:10px}
+.blog::-webkit-scrollbar{width:3px}
+.blog::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.be{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);display:flex;align-items:center;gap:6px}
+.be .a{font-weight:800;color:var(--orange);min-width:40px}
+.be .n{color:var(--text);font-weight:600}
+.be .t{color:var(--muted);margin-left:auto;font-size:8px}
+.be .tp{font-size:8px;padding:1px 4px;border-radius:2px;font-weight:600}
+
+.empty{text-align:center;padding:24px 14px;color:var(--muted);font-size:11px}
+.empty .icon{font-size:28px;margin-bottom:4px}
+
+/* 타입 칩 버튼 */
+.type-chips{display:flex;gap:3px}
+.tc{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap}
+.tc:hover{border-color:var(--muted);color:var(--text2)}
+.tc.active{background:rgba(74,222,128,.15);border-color:var(--blue);color:var(--blue)}
+.tc[data-val="mission"].active{background:rgba(234,179,8,.15);border-color:var(--yellow);color:var(--yellow)}
+.tc[data-val="balloon"].active{background:rgba(74,222,128,.15);border-color:var(--blue);color:var(--blue)}
+.tc[data-val="adballoon"].active{background:rgba(134,239,172,.15);border-color:var(--purple);color:var(--purple)}
+
+@media(max-width:768px){.header{flex-direction:column}.stats .st{min-width:calc(50% - 3px)}.tpl-form{flex-direction:column}.r-card{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<!-- 로그인 화면 -->
+<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;width:320px">
+    <img src="icon.png" style="width:64px;height:64px;border-radius:10px;margin-bottom:12px">
+    <div style="font-family:'Black Han Sans';font-size:20px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">MK 대결미션 매니저</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:20px">접속 비밀번호를 입력하세요</div>
+    <input id="loginPw" type="password" placeholder="비밀번호" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;text-align:center;margin-bottom:10px">
+    <div id="loginErr" style="font-size:10px;color:var(--red);margin-bottom:8px;min-height:14px"></div>
+    <button onclick="doLogin()" style="width:100%;padding:10px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">입장</button>
+  </div>
+</div>
+
+<div class="app" id="mainApp" style="display:none">
+  <div class="header">
+    <div><div class="logo"><img src="icon.png" alt="MK">MK 대결미션 매니저</div><div class="logo-sub">SOOP 별풍선 자동감지 · v4.0 · phonics1</div></div>
+    <div class="conn">
+      <div class="dot off" id="dot"></div>
+      <span id="connTxt">연결 안됨</span>
+      <input class="ci" id="sInput" value="phonics1" readonly style="opacity:.6;cursor:default">
+      <button class="cb" onclick="setStreamer()">연결</button>
+      <button class="cb" onclick="doReconnect()">🔄</button>
+      <button class="cb" onclick="changePw()" style="border-color:var(--muted);color:var(--muted)">🔑</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="st"><div class="st-l">전체</div><div class="st-v" style="color:var(--blue)" id="s1">0</div></div>
+    <div class="st"><div class="st-l">진행중</div><div class="st-v" style="color:var(--orange)" id="s2">0</div></div>
+    <div class="st"><div class="st-l">완료</div><div class="st-v" style="color:var(--green)" id="s3">0</div></div>
+    <div class="st"><div class="st-l">대기(역팬)</div><div class="st-v" style="color:var(--red)" id="s4">0</div></div>
+  </div>
+
+  <!-- 미션 등록 -->
+  <div class="sec">
+    <h2>📋 미션 등록</h2>
+
+    <!-- 자동등록 임계값 -->
+    <div class="auto-box">
+      <label>⚡ 자동등록</label>
+      <input id="autoVal" type="number" placeholder="0" value="0" min="0" step="100">
+      <span style="font-size:11px;color:var(--text2)">개 이상이면 템플릿 없어도 자동등록</span>
+      <button onclick="setAutoThreshold()">적용</button>
+      <button onclick="document.getElementById('autoVal').value='0';setAutoThreshold()" style="border-color:var(--red);color:var(--red)">끄기</button>
+      <div class="desc" id="autoDesc">현재: 비활성</div>
+    </div>
+
+    <!-- 등록 폼 -->
+    <div class="tpl-form">
+      <div class="fg"><label>미션 이름</label><input id="tName" placeholder="역팬, 방셀 등" style="width:100px"></div>
+      <div class="fg"><label>개수 (정확히)</label><input id="tCount" type="number" value="500" style="width:80px"></div>
+      <div class="fg"><label>타입</label>
+        <div class="type-chips" id="tTypeChips">
+          <button class="tc active" data-val="all" onclick="pickType(this)">전체</button>
+          <button class="tc" data-val="balloon" onclick="pickType(this)">⭐별풍</button>
+          <button class="tc" data-val="adballoon" onclick="pickType(this)">🎈애드</button>
+          <button class="tc" data-val="mission" onclick="pickType(this)">⚔대결</button>
+        </div>
+      </div>
+      <div class="chk-group">
+        <label><input type="checkbox" id="tDomain" checked> 🔗 도메인</label>
+        <label><input type="checkbox" id="tMsg" checked> 💬 메시지</label>
+      </div>
+      <button class="btn-add" onclick="addTemplate()">+ 등록</button>
+    </div>
+
+    <div class="tpl-list" id="tplList"></div>
+  </div>
+
+  <!-- 미션 현황 -->
+  <div class="sec">
+    <h2>🎯 미션 현황</h2>
+    <div class="filters">
+      <button class="ft active" onclick="setF('all',this)">전체</button>
+      <button class="ft" onclick="setF('pending',this)">진행중</button>
+      <button class="ft" onclick="setF('done',this)">완료</button>
+      <span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span>
+      <button class="ft type-ft" onclick="setTF('all',this)" style="border-color:rgba(74,222,128,.3);color:var(--blue)">모든타입</button>
+      <button class="ft type-ft" onclick="setTF('mission',this)" style="border-color:rgba(234,179,8,.3);color:var(--yellow)">대결미션</button>
+      <button class="ft type-ft" onclick="setTF('balloon',this)" style="border-color:rgba(74,222,128,.3);color:var(--blue)">별풍선</button>
+      <button class="ft type-ft" onclick="setTF('adballoon',this)" style="border-color:rgba(134,239,172,.3);color:var(--purple)">애드벌룬</button>
+      <button class="ft" id="sheetBtn" style="margin-left:auto;border-color:rgba(74,222,128,.3);color:var(--blue)" onclick="exportSheets()">📊 구글시트</button>
+      <button class="ft" style="border-color:rgba(110,231,183,.3);color:var(--cyan)" onclick="exportCSV()">📄 CSV</button>
+      <button class="ft" style="border-color:rgba(239,68,68,.3);color:var(--red)" onclick="resetResults()">🗑 초기화</button>
+    </div>
+    <div class="results" id="resList">
+      <div class="empty"><div class="icon">🎮</div>별풍선을 기다리는 중...</div>
+    </div>
+  </div>
+
+  <!-- 로그 -->
+  <div class="sec">
+    <h2>⭐ 실시간 로그</h2>
+    <div class="blog" id="bLog"><div class="empty" style="padding:12px"><div class="icon">⏳</div>대기 중...</div></div>
+  </div>
+
+</div>
+
+<script>
+let templates=[], results=[], filter='all', typeFilter='all', autoThreshold=0, es=null, editingId=null;
+let authToken=sessionStorage.getItem('mk_token')||'';
+
+// 인증
+async function doLogin(){
+  const pw=document.getElementById('loginPw').value;
+  if(!pw){document.getElementById('loginErr').textContent='비밀번호를 입력하세요';return}
+  try{
+    const r=await fetch('/api/auth',{method:'POST',headers:authHeaders(),body:JSON.stringify({password:pw})});
+    const d=await r.json();
+    if(d.ok){authToken=d.token;sessionStorage.setItem('mk_token',authToken);showMain()}
+    else{document.getElementById('loginErr').textContent=d.error||'틀렸습니다'}
+  }catch(e){document.getElementById('loginErr').textContent='서버 연결 실패'}
+}
+function showMain(){document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='block';loadCfg();connectSSE()}
+function authHeaders(){return{'Content-Type':'application/json','X-Auth':authToken}}
+
+// 비밀번호 변경
+async function changePw(){
+  const np=prompt('새 비밀번호 (4자 이상):');
+  if(!np||np.length<4){if(np!==null)alert('4자 이상 입력해주세요');return}
+  const r=await fetch('/api/change-password',{method:'POST',headers:authHeaders(),body:JSON.stringify({newPassword:np})});
+  const d=await r.json();
+  if(d.ok){authToken=d.token;sessionStorage.setItem('mk_token',authToken);alert('비밀번호가 변경되었습니다')}
+  else{alert(d.error||'변경 실패')}
+}
+
+document.getElementById('loginPw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+// 이전 토큰으로 자동 로그인 시도
+if(authToken){fetch('/api/config',{headers:{'X-Auth':authToken}}).then(r=>{if(r.ok)showMain();else{sessionStorage.removeItem('mk_token');authToken=''}}).catch(()=>{});}
+
+
+function connectSSE(){
+  if(es)es.close();
+  es=new EventSource('/api/events');
+  es.addEventListener('status',e=>{const d=JSON.parse(e.data);updConn(d.status,d.streamerId,d.error)});
+  es.addEventListener('templates',e=>{templates=JSON.parse(e.data);renderTpl()});
+  es.addEventListener('autoThreshold',e=>{autoThreshold=JSON.parse(e.data).value;updAutoDesc()});
+  es.addEventListener('result',e=>{const r=JSON.parse(e.data);if(!results.find(x=>x.id===r.id)){results.unshift(r);renderRes();updStats();playSound()}});
+  es.addEventListener('resultUpdate',e=>{const r=JSON.parse(e.data);const i=results.findIndex(x=>x.id===r.id);if(i>=0)results[i]=r;renderRes();updStats()});
+  es.addEventListener('resultDelete',e=>{results=results.filter(r=>r.id!==JSON.parse(e.data).id);renderRes();updStats()});
+  es.addEventListener('resetResults',()=>{results=[];renderRes();updStats()});
+  es.addEventListener('balloon',e=>{addBLog(JSON.parse(e.data))});
+  es.addEventListener('donationMsg',e=>{
+    const d=JSON.parse(e.data);
+    addBLog({...d, type:'tts'});
+  });
+}
+
+function updConn(s,id,err){
+  const d=document.getElementById('dot'),t=document.getElementById('connTxt');
+  d.className='dot';
+  if(s==='connected'){d.classList.add('on');t.textContent=`${id} 연결됨`}
+  else if(s==='connecting'){d.classList.add('wait');t.textContent='연결 중...'}
+  else if(s==='error'){d.classList.add('off');t.textContent=`오류: ${err||''}`}
+  else if(s==='no_config'){d.classList.add('off');t.textContent='스트리머 ID 입력'}
+  else{d.classList.add('off');t.textContent='연결 안됨'}
+}
+
+async function setStreamer(){const id=document.getElementById('sInput').value.trim();if(!id)return;await fetch('/api/config',{method:'POST',headers:authHeaders(),body:JSON.stringify({streamerId:id})})}
+async function doReconnect(){await fetch('/api/reconnect',{method:'POST'})}
+
+// 자동등록 임계값
+async function setAutoThreshold(){
+  const v=parseInt(document.getElementById('autoVal').value)||0;
+  await fetch('/api/auto-threshold',{method:'POST',headers:authHeaders(),body:JSON.stringify({value:v})});
+}
+function updAutoDesc(){
+  document.getElementById('autoVal').value=autoThreshold;
+  document.getElementById('autoDesc').textContent=autoThreshold>0?`현재: ${autoThreshold}개 이상 자동등록 활성 ✅`:'현재: 비활성';
+}
+
+// 타입 칩
+let selectedType='all';
+function pickType(btn){
+  selectedType=btn.dataset.val;
+  btn.closest('.type-chips').querySelectorAll('.tc').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// 템플릿
+async function addTemplate(){
+  const name=document.getElementById('tName').value.trim()||'미션';
+  const starCount=parseInt(document.getElementById('tCount').value)||500;
+  const eventType=selectedType;
+  const collectDomain=document.getElementById('tDomain').checked;
+  const collectMessage=document.getElementById('tMsg').checked;
+  await fetch('/api/templates',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,starCount,eventType,collectDomain,collectMessage})});
+  document.getElementById('tName').value='';
+}
+
+function renderTpl(){
+  const el=document.getElementById('tplList');
+  if(!templates.length){el.innerHTML='<div class="empty" style="padding:12px;width:100%"><div class="icon">📋</div>미션을 등록해주세요!</div>';return}
+  el.innerHTML=templates.map(t=>{
+    if(editingId===t.id){
+      const et=t.eventType||'all';
+      return`<div class="tpl-card editing">
+        <div class="edit-inline">
+          <input id="eName" value="${t.name}" style="width:80px" placeholder="이름">
+          <input id="eCount" type="number" value="${t.starCount}" style="width:70px">
+          <div class="type-chips" id="eTypeChips">
+            <button class="tc ${et==='all'?'active':''}" data-val="all" onclick="pickEditType(this)">전체</button>
+            <button class="tc ${et==='balloon'?'active':''}" data-val="balloon" onclick="pickEditType(this)">⭐별풍</button>
+            <button class="tc ${et==='adballoon'?'active':''}" data-val="adballoon" onclick="pickEditType(this)">🎈애드</button>
+            <button class="tc ${et==='mission'?'active':''}" data-val="mission" onclick="pickEditType(this)">⚔대결</button>
+          </div>
+          <label style="font-size:10px;color:var(--text2);display:flex;align-items:center;gap:3px"><input type="checkbox" id="eDomain" ${t.collectDomain?'checked':''} style="width:12px;height:12px">🔗</label>
+          <label style="font-size:10px;color:var(--text2);display:flex;align-items:center;gap:3px"><input type="checkbox" id="eMsg" ${t.collectMessage?'checked':''} style="width:12px;height:12px">💬</label>
+          <button class="save" onclick="saveEdit(${t.id})">저장</button>
+          <button class="cancel" onclick="editingId=null;renderTpl()">취소</button>
+        </div>
+      </div>`;
+    }
+    return`<div class="tpl-card ${t.active?'':'inactive'}">
+      <div class="tpl-star">⭐${t.starCount}</div>
+      <div>
+        <div class="tpl-name">${t.name}</div>
+        <div class="tpl-cond">${t.starCount}개 · ${({all:'전체',balloon:'별풍선',adballoon:'애드벌룬',mission:'대결미션'})[t.eventType||'all']}</div>
+        <div class="tpl-tags">
+          <span class="tpl-tag" style="background:rgba(74,222,128,.12);color:var(--blue)">${({all:'전체',balloon:'⭐별풍',adballoon:'🎈애드',mission:'⚔대결'})[t.eventType||'all']}</span>
+          ${t.collectDomain?'<span class="tpl-tag domain">🔗도메인</span>':''}
+          ${t.collectMessage?'<span class="tpl-tag msg">💬메시지</span>':''}
+        </div>
+      </div>
+      <div class="tpl-actions">
+        <button class="tpl-btn edit" onclick="startEdit(${t.id})">✏</button>
+        <button class="tpl-btn" onclick="toggleTpl(${t.id})">${t.active?'⏸':'▶'}</button>
+        <button class="tpl-btn del" onclick="delTpl(${t.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let editType='all';
+function pickEditType(btn){
+  editType=btn.dataset.val;
+  btn.closest('.type-chips').querySelectorAll('.tc').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function startEdit(id){editingId=id;const t=templates.find(x=>x.id===id);editType=t?.eventType||'all';renderTpl()}
+async function saveEdit(id){
+  const name=document.getElementById('eName').value.trim();
+  const starCount=parseInt(document.getElementById('eCount').value);
+  const eventType=editType;
+  const collectDomain=document.getElementById('eDomain').checked;
+  const collectMessage=document.getElementById('eMsg').checked;
+  await fetch('/api/templates/update',{method:'POST',headers:authHeaders(),body:JSON.stringify({id,name,starCount,eventType,collectDomain,collectMessage})});
+  editingId=null;
+}
+async function toggleTpl(id){await fetch('/api/templates/toggle',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
+async function delTpl(id){if(!confirm('삭제?'))return;await fetch('/api/templates/delete',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
+
+// 결과
+function renderRes(){
+  const el=document.getElementById('resList');
+  let list=results;
+  if(filter==='pending')list=list.filter(r=>!r.completed);
+  else if(filter==='done')list=list.filter(r=>r.completed);
+  if(typeFilter!=='all')list=list.filter(r=>(r.eventType||'balloon')===typeFilter);
+  if(!list.length){el.innerHTML='<div class="empty"><div class="icon">🎮</div>미션을 기다리는 중...</div>';return}
+  el.innerHTML=list.map(r=>{
+    const et=r.eventType||'balloon';
+    const isAuto=r.isAutoThreshold;
+    const badgeClass=isAuto?'auto':et;
+    const linkBtn=r.channelUrl&&!r.completed?`<a href="${r.channelUrl}" target="_blank" class="rb go">방송국→</a>`:'';
+    const memoField=r.collectMessage?`<input class="r-memo" value="${r.message||''}" placeholder="메모..." onchange="updMemo(${r.id},this.value)" onclick="event.stopPropagation()">`:'';
+    const tagHtml=isAuto?'<span class="tag thresh">자동등록</span>':'<span class="tag auto">매칭</span>';
+    return`<div class="r-card ${r.completed?'done':''}">
+      <span class="r-badge ${badgeClass}">⭐${r.amount} ${r.templateName}</span>
+      <div class="r-info">
+        <div class="r-user">${r.userNickname||r.userId||'?'} ${tagHtml}</div>
+        <div class="r-detail">
+          ${r.channelUrl?`<a href="${r.channelUrl}" target="_blank" class="r-link">🔗${r.userId}</a>`:''}
+          ${r.message?`📝 <b>${r.message}</b>`:memoField}
+        </div>
+      </div>
+      <div class="stamp">완료</div>
+      <div class="r-time">${r.createdAt}</div>
+      <div class="r-acts">
+        ${linkBtn}
+        <button class="rb ${r.completed?'undo':'ok'}" onclick="toggleRes(${r.id})">${r.completed?'↩':'✅'}</button>
+        <button class="rb del" onclick="delRes(${r.id})">✕</button>
+      </div>
+    </div>`
+  }).join('');
+}
+
+function setF(f,btn){filter=f;document.querySelectorAll('.ft:not(.type-ft)').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderRes()}
+function setTF(f,btn){typeFilter=f;document.querySelectorAll('.type-ft').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderRes()}
+function updStats(){
+  const t=results.length,d=results.filter(r=>r.completed).length;
+  document.getElementById('s1').textContent=t;
+  document.getElementById('s2').textContent=t-d;
+  document.getElementById('s3').textContent=d;
+  document.getElementById('s4').textContent=results.filter(r=>r.collectDomain&&!r.completed).length;
+}
+
+async function toggleRes(id){await fetch('/api/results/toggle',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
+async function delRes(id){await fetch('/api/results/delete',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
+async function updMemo(id,message){await fetch('/api/results/memo',{method:'POST',headers:authHeaders(),body:JSON.stringify({id,message})})}
+async function resetResults(){if(confirm('전체 초기화?'))await fetch('/api/results/reset',{method:'POST'})}
+
+// Google Sheets 추출 (직접 API)
+async function exportSheets(){
+  if(!results.length){alert('추출할 데이터가 없습니다');return}
+  const btn=document.getElementById('sheetBtn');
+  btn.textContent='⏳ 생성중...';btn.disabled=true;
+  try{
+    const r=await fetch('/api/export-sheets',{method:'POST',headers:authHeaders(),body:JSON.stringify({})});
+    const d=await r.json();
+    btn.textContent='📊 구글시트';btn.disabled=false;
+    if(d.ok!==false&&d.url){window.open(d.url,'_blank')}
+    else{alert(d.error||'전송 실패')}
+  }catch(e){btn.textContent='📊 구글시트';btn.disabled=false;alert('오류: '+e.message)}
+}
+
+// CSV 추출 (Google Sheets 호환)
+function exportCSV(){
+  if(!results.length){alert('추출할 데이터가 없습니다');return}
+  const typeName={balloon:'별풍선',adballoon:'애드벌룬',video:'영상풍선',mission:'대결미션'};
+  const header=['미션명','타입','개수','닉네임','유저ID','도메인','메시지','상태','시간'];
+  const rows=results.map(r=>[
+    r.templateName||'',
+    typeName[r.eventType||'balloon']||r.eventType||'',
+    r.amount||'',
+    r.userNickname||'',
+    r.userId||'',
+    r.channelUrl||'',
+    (r.message||'').replace(/"/g,'""'),
+    r.completed?'완료':'진행중',
+    r.createdAt||''
+  ]);
+  const bom='\uFEFF';
+  const csv=bom+[header,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const d=new Date();
+  a.download=`MK미션_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}_${String(d.getHours()).padStart(2,'0')}${String(d.getMinutes()).padStart(2,'0')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// 로그
+let blogFirst=true;
+function addBLog(b){
+  const el=document.getElementById('bLog');
+  if(blogFirst){el.innerHTML='';blogFirst=false}
+  const tc={balloon:'color:var(--blue)',adballoon:'color:var(--purple)',video:'color:var(--cyan)',mission:'color:var(--yellow);font-weight:800',tts:'color:var(--orange);font-weight:800'};
+  const tn={balloon:'별풍',adballoon:'애드',video:'영상',mission:'대결',tts:'💬TTS'};
+  const tp=b.type||'balloon';
+  const mTitle=b.missionTitle?` [${b.missionTitle}]`:'';
+  const msgHtml=b.message?`<span style="color:var(--orange);font-weight:600;margin-left:4px">"${b.message}"</span>`:'';
+  el.insertAdjacentHTML('afterbegin',`<div class="be"><span class="a">⭐${b.amount}</span><span class="tp" style="${tc[tp]||''}">${tn[tp]||tp}${mTitle}</span><span class="n">${b.userNickname}</span>${msgHtml}<a href="${b.channelUrl||'#'}" target="_blank" class="r-link">${b.userId||''}</a><span class="t">${b.time}</span></div>`);
+  while(el.children.length>100)el.lastChild.remove();
+}
+
+
+function playSound(){try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;o.type='sine';g.gain.value=.12;o.start();g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);o.stop(c.currentTime+.25)}catch(e){}}
+
+async function loadCfg(){try{const r=await fetch('/api/config');const c=await r.json();if(c.streamerId)document.getElementById('sInput').value=c.streamerId;if(c.autoThreshold){autoThreshold=c.autoThreshold;updAutoDesc()}}catch(e){}}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='sInput')setStreamer();
+  if(e.key==='Enter'&&['tName','tCount'].includes(e.target.id))addTemplate();
+  if(e.key==='Enter'&&e.target.id==='autoVal')setAutoThreshold();
+});
+
+// loadCfg, connectSSE는 로그인 성공 시 showMain()에서 호출
+</script>
+</body>
+</html>

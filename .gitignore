@@ -1,0 +1,4 @@
+node_modules/
+.env
+*.log
+gcp-key.json
