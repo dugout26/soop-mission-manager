@@ -91,6 +91,11 @@ const KNOWN_TYPES = new Set([
   '0018','0087','0093','0104','0109','0105','0127'
 ]);
 
+// SOOP 채팅 userId에서 세션번호 제거 (예: maxmp7011(2) → maxmp7011)
+function normalizeUid(uid) {
+  return uid ? uid.replace(/\(\d+\)$/, '') : '';
+}
+
 function broadcast(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   sseClients = sseClients.filter(res => {
@@ -233,7 +238,7 @@ async function connectToSoop() {
       // 직전 채팅에서 메시지 찾기 (메시지가 후원보다 먼저 올 수 있음)
       let foundMsg = null;
       if (global._recentChats) {
-        const recent = global._recentChats.find(c => c.userId === uid && (Date.now() - c.ts) < 60000);
+        const recent = global._recentChats.find(c => normalizeUid(c.userId) === uid && (Date.now() - c.ts) < 60000);
         if (recent) {
           foundMsg = recent.comment;
           console.log(`💬 직전 채팅에서 TTS 연결! ${nick}(${uid}): "${foundMsg}"`);
@@ -286,7 +291,8 @@ async function connectToSoop() {
 
     // 💬 채팅 → 후원 메시지 연결
     soopChat.on(SoopChatEvent.CHAT, (d) => {
-      const uid = d.userId;
+      const rawUid = d.userId;
+      const uid = normalizeUid(rawUid);  // maxmp7011(2) → maxmp7011
       const msg = d.comment;
       if (isDuplicate(`chat_${uid}_${msg}`)) return;  // 3x 중복 방지
 
@@ -356,7 +362,7 @@ async function connectToSoop() {
           if (typeCode === '0005') {
             const SEP = '\f';
             const chatParts = str.split(SEP);
-            const chatUserId = chatParts[2]?.replace(/[\x00-\x1f]/g, '').trim();
+            const chatUserId = normalizeUid(chatParts[2]?.replace(/[\x00-\x1f]/g, '').trim());
             const chatComment = chatParts[1]?.replace(/[\x00-\x1f]/g, '').trim();
             if (chatUserId && chatComment) {
               if (isDuplicate(`raw0005_${chatUserId}_${chatComment}`)) return;
