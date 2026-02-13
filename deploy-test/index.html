@@ -1,0 +1,3404 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MK 통합 대시보드</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080f0a;--card:#0f1a12;--card2:#162219;--blue:#4ade80;--orange:#f97316;--green:#22c55e;--red:#ef4444;--purple:#86efac;--cyan:#6ee7b7;--yellow:#eab308;--text:#f1f4f1;--text2:#88a090;--muted:#557060;--border:#1e3625;--team-blue:#3b82f6;--team-red:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(74,222,128,.04)1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,.04)1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+
+.app{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:16px}
+
+/* 메인 헤더 */
+.main-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:20px 24px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.main-logo{font-family:'Black Han Sans';font-size:28px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:12px}
+.main-logo img{width:40px;height:40px;border-radius:8px}
+.main-nav{display:flex;gap:8px}
+.nav-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.nav-btn:hover{border-color:var(--blue);color:var(--blue)}
+.nav-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.nav-btn.status{border-color:var(--green);color:var(--green)}
+
+/* 탭 컨텐츠 */
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+
+/* DRAFTMASTER 스타일 사다리 게임 */
+.ladder-container{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+
+/* 상단 참가자 페어 목록 */
+.pair-list{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
+.pair-box{display:flex;flex-direction:column;gap:4px;padding:10px 16px;background:var(--card2);border:2px solid var(--border);border-radius:8px;min-width:120px;text-align:center;transition:all .2s}
+.pair-box.matched{border-color:var(--green);box-shadow:0 0 12px rgba(74,222,128,.15)}
+.pair-box .pair-member{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+.pair-box .pair-member img{width:24px;height:24px;border-radius:50%;object-fit:cover}
+.pair-box .pair-member.leader{color:var(--green)}
+
+/* 메인 3단 레이아웃: A팀 | 중앙 | B팀 */
+.draft-layout{display:grid;grid-template-columns:1fr 100px 1fr;gap:16px;margin-top:20px}
+
+/* 팀 영역 */
+.team-panel{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:16px}
+.team-panel.team-a{border-color:rgba(59,130,246,.3)}
+.team-panel.team-b{border-color:rgba(239,68,68,.3)}
+.team-header{text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.team-header h3{font-size:22px;font-weight:900;margin:0}
+.team-header .team-count{font-size:12px;color:var(--muted);margin-top:2px}
+.team-slot{padding:12px;margin-bottom:8px;border:2px dashed var(--border);border-radius:8px;min-height:56px;display:flex;align-items:center;gap:8px;transition:all .2s}
+.team-a .team-slot.filled{border-style:solid;border-color:var(--team-blue);background:rgba(59,130,246,.05)}
+.team-b .team-slot.filled{border-style:solid;border-color:var(--team-red);background:rgba(239,68,68,.05)}
+.team-slot .slot-label{font-size:11px;color:var(--muted);text-align:center;width:100%}
+.team-a .team-slot img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--team-blue)}
+.team-b .team-slot img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--team-red)}
+.team-slot .slot-name{font-size:13px;font-weight:700}
+.team-a .team-slot .slot-role{font-size:9px;color:var(--team-blue);font-weight:600;text-transform:uppercase}
+.team-b .team-slot .slot-role{font-size:9px;color:var(--team-red);font-weight:600;text-transform:uppercase}
+
+/* 사다리 중앙 영역 */
+.ladder-center{display:flex;flex-direction:column;align-items:stretch}
+.ladder-top-players{display:flex;justify-content:space-evenly;margin-bottom:8px}
+.ladder-player{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px}
+.ladder-player img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--green);background:var(--card2)}
+.ladder-player .player-name{font-size:11px;font-weight:700;text-align:center;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.ladder-bottom{display:flex;justify-content:space-evenly;margin-top:8px}
+.ladder-result-slot{text-align:center}
+.ladder-result-slot .result-label{padding:6px 12px;border-radius:4px;font-size:11px;font-weight:700}
+.ladder-result-slot .result-label.team-a-label{background:var(--team-blue);color:#fff}
+.ladder-result-slot .result-label.team-b-label{background:var(--team-red);color:#fff}
+
+/* 하단 이벤트 로그 바 */
+.event-bar{margin-top:16px;padding:10px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;gap:12px;font-size:12px;overflow:hidden}
+.event-bar .event-icon{font-size:18px}
+.event-bar .event-text{flex:1;color:var(--text2)}
+.event-bar .event-text span{color:var(--green);font-weight:700}
+
+/* 맞벨 체크박스 */
+.match-check{display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 4px}
+.match-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);cursor:pointer}
+.match-check .match-label{font-size:8px;color:var(--green);font-weight:700}
+
+.game-controls{display:flex;gap:12px;justify-content:center;margin-top:20px}
+.game-btn{padding:12px 24px;border-radius:8px;border:none;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.game-btn:hover{transform:translateY(-1px)}
+.game-btn.primary{background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;box-shadow:0 4px 12px rgba(74,222,128,.3)}
+.game-btn.secondary{background:var(--card2);color:var(--text2);border:1px solid var(--border)}
+
+/* 사다리 설정 */
+.ladder-settings{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--text2)}
+.ladder-settings label{display:flex;align-items:center;gap:4px}
+.ladder-settings input[type=number]{width:50px;padding:4px 6px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;text-align:center}
+
+/* 하단 상태바 */
+.status-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-top:12px;font-size:10px;color:var(--muted)}
+.status-bar .status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px}
+
+@media(max-width:900px){
+  .draft-layout{grid-template-columns:1fr;gap:12px}
+  .team-panel{order:2}
+  .ladder-center{order:1}
+}
+
+/* 오늘의 멤버 스타일 */
+.member-grid{display:flex;flex-direction:column;gap:6px;min-height:80px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px}
+.member-pair{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:8px}
+.member-pair .pair-label{font-size:11px;font-weight:900;color:var(--green);min-width:50px;text-align:center;line-height:1.2}
+.member-slot{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:2px dashed var(--border);border-radius:8px;flex:1;min-width:0;min-height:44px;position:relative;transition:all .15s}
+.member-slot.filled{border-style:solid;border-color:var(--border);cursor:grab;user-select:none}
+.member-slot.filled:active{cursor:grabbing}
+.member-slot.filled:hover{border-color:var(--blue);background:rgba(74,222,128,.1)}
+.member-slot.empty{cursor:pointer}
+.member-slot.empty:hover{border-color:var(--green);background:rgba(74,222,128,.05)}
+.member-slot.empty .slot-placeholder{font-size:11px;color:var(--muted);width:100%;text-align:center}
+.member-slot.editing{border-color:var(--green);border-style:solid;background:rgba(74,222,128,.05)}
+.member-slot .slot-input{width:100%;padding:4px 8px;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.member-slot .slot-input::placeholder{color:var(--muted);font-size:11px}
+.member-slot .slot-search-results{position:absolute;top:100%;left:0;right:0;background:var(--card);border:2px solid var(--green);border-radius:8px;max-height:200px;overflow-y:auto;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.5);margin-top:4px}
+.member-slot .slot-search-item{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid rgba(74,222,128,.1);transition:all .1s}
+.member-slot .slot-search-item:hover,.member-slot .slot-search-item.highlighted{background:rgba(74,222,128,.15)}
+.member-slot .slot-search-item img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--green)}
+.member-slot .slot-search-item .si-name{font-size:13px;font-weight:700}
+.member-slot .slot-search-item .si-id{font-size:10px;color:var(--muted)}
+.member-slot.dragging{opacity:0.4;border:2px dashed var(--green)}
+.member-slot.drag-over{border-color:var(--green);background:rgba(74,222,128,.15);transform:scale(1.02)}
+.member-slot img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+.member-slot .info{flex:1;min-width:0}
+.member-slot .name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member-slot .remove{position:absolute;top:-5px;right:-5px;width:18px;height:18px;background:var(--red);color:#fff;border:none;border-radius:50%;font-size:10px;cursor:pointer;display:none;z-index:2}
+.member-slot.filled:hover .remove{display:flex;align-items:center;justify-content:center}
+.member-card{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border:2px solid var(--border);border-radius:8px;cursor:grab;transition:all .15s;position:relative;user-select:none;flex:1;min-width:0}
+.member-card:active{cursor:grabbing}
+.member-card:hover{border-color:var(--blue);background:rgba(74,222,128,.1)}
+.member-card.selected{border-color:var(--green);background:rgba(34,197,94,.15)}
+.member-card.dragging{opacity:0.4;border:2px dashed var(--green)}
+.member-card.drag-over{border-color:var(--green);background:rgba(74,222,128,.15);transform:scale(1.02)}
+.member-card img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+.member-card .info{flex:1;min-width:0}
+.member-card .name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member-card .id{font-size:10px;color:var(--muted)}
+.member-card .member-order{font-size:14px;font-weight:900;color:var(--green);min-width:18px;text-align:center}
+.member-card .remove{position:absolute;top:-5px;right:-5px;width:18px;height:18px;background:var(--red);color:#fff;border:none;border-radius:50%;font-size:10px;cursor:pointer;display:none;z-index:2}
+.member-card:hover .remove{display:flex;align-items:center;justify-content:center}
+.member-pair .pair-vs{font-size:10px;font-weight:900;color:var(--yellow)}
+.member-pair-divider{display:none}
+
+/* 참가자 선택 모달 */
+.pick-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;align-items:center;justify-content:center}
+.pick-overlay.active{display:flex}
+.pick-modal{background:var(--card);border:2px solid var(--green);border-radius:12px;padding:24px;max-width:400px;width:90%;max-height:80vh;overflow-y:auto}
+.pick-modal h3{font-size:16px;font-weight:700;color:var(--green);margin-bottom:16px}
+.pick-option{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.pick-option:hover{border-color:var(--green);background:rgba(74,222,128,.05)}
+.pick-option img{width:40px;height:40px;border-radius:50%;object-fit:cover}
+.pick-option .pick-name{font-size:14px;font-weight:700}
+
+/* 라인 선택 옵션 */
+.line-option{display:flex;align-items:center;gap:12px;padding:14px 16px;border:2px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.line-option:hover{border-color:var(--green);background:rgba(74,222,128,.05)}
+.line-option.selected{border-color:var(--green);background:rgba(34,197,94,.15);box-shadow:0 0 12px rgba(74,222,128,.2)}
+.line-option.done{opacity:0.4;cursor:not-allowed;border-color:var(--muted)}
+.line-option img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+.line-option .line-label{font-size:15px;font-weight:700;color:var(--green)}
+.line-option .line-vs{font-size:12px;font-weight:900;color:var(--yellow);margin:0 4px}
+.member-card.locked{opacity:0.8;cursor:default;border-style:solid}
+.pick-option .pick-id{font-size:10px;color:var(--muted)}
+
+/* 픽 애니메이션 오버레이 */
+.pick-anim-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.pick-anim-overlay.show{opacity:1;pointer-events:auto}
+.pick-anim-card{background:var(--card);border:3px solid var(--green);border-radius:16px;padding:32px 48px;text-align:center;transform:scale(.5);transition:transform .4s cubic-bezier(.34,1.56,.64,1),border-color .3s}
+.pick-anim-overlay.show .pick-anim-card{transform:scale(1)}
+.pick-anim-card.blue{border-color:var(--team-blue)}
+.pick-anim-card.red{border-color:var(--team-red)}
+.pick-anim-card img{width:80px;height:80px;border-radius:50%;object-fit:cover;margin-bottom:12px;border:3px solid var(--green)}
+.pick-anim-card.blue img{border-color:var(--team-blue)}
+.pick-anim-card.red img{border-color:var(--team-red)}
+.pick-anim-card .anim-name{font-size:22px;font-weight:900;margin-bottom:4px}
+.pick-anim-card .anim-team{font-size:13px;font-weight:700;margin-top:8px}
+
+/* 주사위 애니메이션 */
+.dice-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .3s}
+.dice-overlay.show{opacity:1;pointer-events:auto}
+.dice-container{font-size:120px;animation:diceRoll 2s ease-out;text-align:center}
+@keyframes diceRoll{0%{transform:rotate(0deg) scale(.3);opacity:0}20%{transform:rotate(360deg) scale(1.2);opacity:1}40%{transform:rotate(720deg) scale(1)}60%{transform:rotate(1080deg) scale(1.1)}80%{transform:rotate(1440deg) scale(1)}100%{transform:rotate(1800deg) scale(1)}}
+.dice-result-text{font-size:24px;font-weight:900;color:var(--green);margin-top:20px;opacity:0;animation:fadeInUp .5s .8s forwards}
+@keyframes fadeInUp{to{opacity:1;transform:translateY(0)}from{opacity:0;transform:translateY(20px)}}
+.random-assign-anim{display:flex;flex-direction:column;gap:12px;margin-top:24px;max-width:500px;width:100%;padding:0 16px}
+.random-assign-card{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;opacity:0;transform:translateY(20px);transition:all .4s cubic-bezier(.34,1.56,.64,1)}
+.random-assign-card.show{opacity:1;transform:translateY(0)}
+.random-assign-card .ra-role{font-size:13px;font-weight:900;color:var(--yellow);min-width:44px;text-align:center}
+.random-assign-card .ra-member{display:flex;align-items:center;gap:8px;flex:1;padding:8px 12px;border-radius:8px;background:var(--card2)}
+.random-assign-card .ra-member img{width:36px;height:36px;border-radius:50%;object-fit:cover}
+.random-assign-card .ra-member .ra-name{font-size:13px;font-weight:700}
+.random-assign-card .ra-member .ra-team{font-size:10px;font-weight:700;margin-top:1px}
+.random-assign-card .ra-member.team-a{border:2px solid var(--team-blue)}
+.random-assign-card .ra-member.team-a .ra-team{color:var(--team-blue)}
+.random-assign-card .ra-member.team-a img{border:2px solid var(--team-blue)}
+.random-assign-card .ra-member.team-b{border:2px solid var(--team-red)}
+.random-assign-card .ra-member.team-b .ra-team{color:var(--team-red)}
+.random-assign-card .ra-member.team-b img{border:2px solid var(--team-red)}
+.random-assign-card .ra-vs{font-size:11px;font-weight:900;color:var(--muted)}
+
+/* 드래프트 방식 선택 모달 */
+.draft-method-option{display:flex;align-items:center;gap:16px;padding:20px;border:2px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all .2s}
+.draft-method-option:hover{border-color:var(--green);background:rgba(74,222,128,.05);transform:translateY(-1px)}
+.draft-method-option .dm-icon{font-size:36px;min-width:50px;text-align:center}
+.draft-method-option .dm-title{font-size:16px;font-weight:900;color:var(--green)}
+.draft-method-option .dm-desc{font-size:11px;color:var(--text2);margin-top:2px;line-height:1.4}
+
+/* 커스텀 슬롯 설정 */
+.custom-slot-row{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card2);border:2px solid var(--border);border-radius:10px}
+.custom-slot-row .cs-label{font-size:14px;font-weight:700;color:var(--text);min-width:90px}
+.custom-slot-row .cs-label.side{color:var(--yellow)}
+.custom-slot-btns{display:flex;gap:6px;flex:1}
+.custom-slot-btns button{flex:1;padding:8px 4px;border-radius:6px;border:2px solid var(--border);background:var(--bg);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.custom-slot-btns button:hover{border-color:var(--green)}
+.custom-slot-btns button.active-pick{border-color:var(--team-blue);background:rgba(59,130,246,.15);color:var(--team-blue)}
+.custom-slot-btns button.active-counter{border-color:var(--team-red);background:rgba(239,68,68,.15);color:var(--team-red)}
+.custom-slot-btns button.active-ladder{border-color:var(--green);background:rgba(74,222,128,.15);color:var(--green)}
+
+/* 포지션 선택 모달 */
+.role-select-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:150;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.role-select-overlay.active{opacity:1;pointer-events:auto}
+.role-select-modal{background:var(--card);border:2px solid var(--green);border-radius:16px;padding:24px;max-width:360px;width:90%}
+.role-btn{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;margin-bottom:8px;border:2px solid var(--border);border-radius:10px;background:var(--card2);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.role-btn:hover{border-color:var(--green);background:rgba(74,222,128,.05);transform:translateY(-1px)}
+.role-btn.used{opacity:.3;pointer-events:none;border-color:var(--border)}
+.role-btn .role-icon{font-size:22px;min-width:30px;text-align:center}
+.role-btn .role-name{flex:1}
+
+/* 팀결성완료 확대 */
+.team-complete-result{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}
+.team-complete-result .team-panel{padding:20px}
+.team-complete-result .team-header h3{font-size:26px}
+.team-complete-result .team-slot{padding:14px;min-height:60px}
+.team-complete-result .team-slot img{width:44px;height:44px}
+.team-complete-result .team-slot .slot-name{font-size:15px}
+
+@media(max-width:768px){
+  .main-header{flex-direction:column;gap:12px}
+  .participants{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<!-- 로그인 바이패스 (테스트용) -->
+<div id="loginScreen" style="display:none"></div>
+
+<div class="app" id="mainApp" style="display:none">
+  <!-- 메인 헤더 -->
+  <div class="main-header">
+    <div>
+      <div class="main-logo">
+        <img src="icon.png" alt="MK">
+        MK 통합 대시보드
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">미션매니저 + 팀뽑기 · phonics1</div>
+    </div>
+    <div class="main-nav">
+      <button class="nav-btn active" onclick="switchTab('ladder',this)">🎲 팀뽑기</button>
+      <span style="font-size:11px;color:var(--green);font-weight:600;padding:8px 12px;background:rgba(74,222,128,.1);border-radius:8px">테스트 모드</span>
+    </div>
+  </div>
+
+  <!-- 미션매니저 탭 (비활성) -->
+  <div id="missionTab" class="tab-content" style="display:none"></div>
+  <div id="missionFrame"></div>
+
+  <!-- 팀뽑기 탭 -->
+  <div id="ladderTab" class="tab-content active">
+    <!-- 게임 모드 선택 -->
+    <div id="gameModeSelector" class="ladder-container" style="margin-bottom:16px;text-align:center">
+      <h2 style="font-family:'Black Han Sans';font-size:24px;color:var(--green);margin-bottom:16px">⚔️ 게임 모드 선택</h2>
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+        <button onclick="selectGameMode('solo')" style="flex:1;max-width:280px;padding:24px 20px;background:var(--card2);border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:32px;margin-bottom:8px">🎮</div>
+          <div style="font-size:18px;font-weight:900;color:var(--green);margin-bottom:4px">솔랭 내기</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.5">맞벨을 <span style="color:var(--green);font-weight:700">수동</span>으로 설정<br>원하는 멤버끼리만 맞벨 체크</div>
+        </button>
+        <button onclick="selectGameMode('land')" style="flex:1;max-width:280px;padding:24px 20px;background:var(--card2);border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
+          <div style="font-size:32px;margin-bottom:8px">🏰</div>
+          <div style="font-size:18px;font-weight:900;color:var(--yellow);margin-bottom:4px">랜드 / CK</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.5">전원 <span style="color:var(--yellow);font-weight:700">자동 맞벨</span><br>A,B C,D 순서대로 2인 1조</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 오늘의 대결 멤버 -->
+    <div id="memberSection" class="ladder-container" style="margin-bottom:16px;display:none">
+      <h2 style="font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        👥 오늘의 대결 멤버
+        <span style="font-size:10px;color:var(--muted);font-weight:400">미리 등록해두고 클릭으로 선택하세요</span>
+      </h2>
+
+      <!-- 멤버 추가 -->
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+        <div class="search-container" style="flex:1;min-width:250px;position:relative">
+          <label style="display:block;font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">
+            🔍 스트리머 검색
+          </label>
+          <div style="position:relative">
+            <input id="newMemberInput"
+                   placeholder="스트리머 이름을 입력하세요..."
+                   style="width:100%;padding:12px 16px;background:var(--card);border:2px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s"
+                   oninput="searchStreamerForMember(this)"
+                   onfocus="this.style.borderColor='var(--green)';this.style.boxShadow='0 0 0 3px rgba(74, 222, 128, 0.1)'"
+                   onblur="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+            <div style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">
+              ⌨️
+            </div>
+          </div>
+        </div>
+        <button onclick="addTodayMember()"
+                style="padding:12px 20px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(74, 222, 128, 0.3);transition:transform 0.1s"
+                onmouseover="this.style.transform='translateY(-1px)'"
+                onmouseout="this.style.transform='translateY(0)'">
+          ✅ 추가
+        </button>
+        <button onclick="clearTodayMembers()"
+                style="padding:12px 20px;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(239, 68, 68, 0.3);transition:transform 0.1s"
+                onmouseover="this.style.transform='translateY(-1px)'"
+                onmouseout="this.style.transform='translateY(0)'">
+          🗑️ 전체삭제
+        </button>
+        <button onclick="fullReset()"
+                style="padding:12px 20px;background:linear-gradient(135deg,#6b7280,#4b5563);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px rgba(107,114,128,.3);transition:transform 0.1s"
+                onmouseover="this.style.transform='translateY(-1px)'"
+                onmouseout="this.style.transform='translateY(0)'">
+          🔄 전체초기화
+        </button>
+      </div>
+
+      <!-- 등록된 멤버 목록 (2열 세로 그리드) -->
+      <div id="todayMembersList" class="member-grid"></div>
+
+      <!-- 멤버확정 버튼 -->
+      <div style="margin-top:16px;text-align:center">
+        <button id="confirmMembersBtn" onclick="confirmMembers()" style="display:none;padding:16px 48px;background:linear-gradient(135deg,#4ade80,#22c55e);color:#000;border:none;border-radius:12px;font-size:18px;font-weight:900;cursor:pointer;font-family:inherit;box-shadow:0 4px 16px rgba(74,222,128,.4);transition:all .15s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+          ✅ 멤버확정
+        </button>
+      </div>
+    </div>
+
+    <!-- DRAFTMASTER 게임 영역 -->
+    <div class="ladder-container" id="draftArea" style="display:none">
+      <!-- 헤더 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <h2 style="font-family:'Black Han Sans';font-size:26px;color:var(--green);margin:0;display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">🪜</span> 팀뽑기
+        </h2>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <input type="hidden" id="rungCount" value="3">
+          <span id="roundInfo" style="font-size:13px;color:var(--muted);font-weight:600"></span>
+        </div>
+      </div>
+
+      <!-- STEP 1: 사다리 참가자 선택 -->
+      <div id="ladderSetupArea">
+        <div style="margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green)">STEP 1: 사다리 참가자 선택</div>
+        <div style="display:flex;gap:16px;align-items:stretch;flex-wrap:wrap;margin-bottom:16px">
+          <!-- 사다리 세로줄 슬롯: X, 참가자1, 참가자2 -->
+          <div style="flex:1;min-width:100px;background:var(--bg);border:2px dashed var(--red);border-radius:8px;padding:16px;text-align:center;opacity:0.5">
+            <div style="font-size:36px;font-weight:900;color:var(--red);margin-bottom:4px">X</div>
+            <div style="font-size:10px;color:var(--muted)">꽝 (탈락)</div>
+          </div>
+          <div id="ladderSlot1" style="flex:1;min-width:100px;background:var(--bg);border:2px dashed var(--green);border-radius:8px;padding:16px;text-align:center;cursor:pointer" onclick="openPlayerSelect(0)">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">2번 자리</div>
+            <div style="font-size:13px;color:var(--text2)">멤버 클릭</div>
+          </div>
+          <button id="swapLadderBtn" onclick="swapLadderPlayers()" style="align-self:center;padding:10px 14px;background:var(--card2);border:2px solid var(--border);border-radius:8px;color:var(--text);font-size:18px;cursor:pointer;font-family:inherit;transition:all .15s;display:none" onmouseover="this.style.borderColor='var(--green)';this.style.background='rgba(74,222,128,.1)'" onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--card2)'" title="자리 교환">🔄</button>
+          <div id="ladderSlot2" style="flex:1;min-width:100px;background:var(--bg);border:2px dashed var(--green);border-radius:8px;padding:16px;text-align:center;cursor:pointer" onclick="openPlayerSelect(1)">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">3번 자리</div>
+            <div style="font-size:13px;color:var(--text2)">멤버 클릭</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 사다리 캔버스 -->
+      <div id="ladderSection" style="margin-top:12px">
+        <canvas id="ladderCanvas" width="700" height="340" style="width:100%;max-width:600px;margin:0 auto;display:block;border:2px solid var(--border);border-radius:8px;background:rgba(0,0,0,.3)"></canvas>
+        <!-- 하단 결과 라벨: X / 선 / 후 -->
+        <div id="ladderBottomLabels" style="display:flex;justify-content:space-around;max-width:600px;margin:8px auto 0">
+          <button class="ladder-bottom-btn" data-slot="0" onclick="assignBottomLabel(0)" style="flex:1;margin:0 4px;padding:10px 6px;border-radius:6px;border:2px solid var(--red);background:rgba(239,68,68,.1);color:var(--red);font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;transition:all .15s">X</button>
+          <button class="ladder-bottom-btn" data-slot="1" onclick="assignBottomLabel(1)" style="flex:1;margin:0 4px;padding:10px 6px;border-radius:6px;border:2px solid var(--green);background:rgba(74,222,128,.1);color:var(--green);font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;transition:all .15s">선</button>
+          <button class="ladder-bottom-btn" data-slot="2" onclick="assignBottomLabel(2)" style="flex:1;margin:0 4px;padding:10px 6px;border-radius:6px;border:2px solid var(--yellow);background:rgba(234,179,8,.1);color:var(--yellow);font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;transition:all .15s">후</button>
+        </div>
+      </div>
+
+      <!-- 게임 컨트롤 -->
+      <div class="game-controls" style="margin-top:16px">
+        <button class="game-btn primary" onclick="runLadder()" id="runLadderBtn" disabled>▶ 사다리 시작</button>
+        <button class="game-btn secondary" onclick="showAllResults()" id="showAllBtn" style="display:none">⚡ 전체결과보기</button>
+        <button class="game-btn secondary" onclick="resetLadder()">🔄 초기화</button>
+      </div>
+
+      <!-- 사다리 결과 표시 -->
+      <div id="ladderResult" style="display:none;margin-top:16px;padding:16px;background:var(--bg);border:2px solid var(--green);border-radius:10px;text-align:center">
+        <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:12px">사다리 결과</div>
+        <div id="ladderResultContent" style="display:flex;justify-content:center;gap:24px;flex-wrap:wrap"></div>
+      </div>
+
+      <!-- STEP 2: 드래프트 (선/후 결정 후 표시) -->
+      <div id="draftSection" style="display:none;margin-top:24px">
+        <div style="margin-bottom:12px;font-size:13px;font-weight:700;color:var(--green)">STEP 2: 팀원 드래프트</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+          <div id="draftOrderInfo" style="font-size:13px;color:var(--text2);flex:1"></div>
+          <div id="draftTurnInfo" style="font-size:14px;font-weight:700;color:var(--green)"></div>
+        </div>
+
+        <!-- 남은 멤버 풀 -->
+        <div style="margin-bottom:12px;font-size:11px;color:var(--muted)">남은 멤버 (클릭하여 현재 팀에 배정)</div>
+        <div id="draftPool" style="display:flex;gap:8px;flex-wrap:wrap;min-height:60px;padding:8px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:16px"></div>
+
+        <!-- 팀 현황 -->
+        <div class="draft-layout">
+          <div class="team-panel team-a">
+            <div class="team-header">
+              <h3 id="teamAHeader" style="color:var(--team-blue)"><span id="teamAName">A팀</span> <span id="captainALabel" style="font-size:11px;color:var(--muted)"></span></h3>
+              <div class="team-count" id="teamACount">0</div>
+            </div>
+            <div id="teamASlots"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px">
+            <div style="font-size:11px;color:var(--muted)">남은 멤버</div>
+            <div id="remainingMembers" style="font-size:36px;font-weight:900;color:var(--green)">0</div>
+          </div>
+          <div class="team-panel team-b">
+            <div class="team-header">
+              <h3 id="teamBHeader" style="color:var(--team-red)"><span id="teamBName">B팀</span> <span id="captainBLabel" style="font-size:11px;color:var(--muted)"></span></h3>
+              <div class="team-count" id="teamBCount">0</div>
+            </div>
+            <div id="teamBSlots"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 이벤트 로그 바 -->
+      <div class="event-bar" id="eventBar">
+        <span class="event-icon">💡</span>
+        <span class="event-text">멤버를 등록하고 사다리에 <span>2명을 배치</span>한 뒤 X/선/후를 지정하세요.</span>
+      </div>
+
+      <!-- 하단 상태바 -->
+      <div class="status-bar">
+        <div><span class="status-dot"></span>SYSTEM ONLINE</div>
+        <div>ENGINE: LADDER_DRAFT_V3</div>
+      </div>
+    </div>
+
+    <!-- 팀 결성 완료 화면 -->
+    <div class="ladder-container" id="teamCompleteArea" style="display:none">
+      <div style="text-align:center;margin-bottom:24px">
+        <h2 style="font-family:'Black Han Sans';font-size:30px;color:var(--green);margin:0">⚔️ 팀 결성 완료!</h2>
+        <div id="teamCompleteSubtitle" style="font-size:12px;color:var(--muted);margin-top:4px">팀 편성이 완료되었습니다</div>
+      </div>
+      <div class="team-complete-result">
+        <div class="team-panel team-a">
+          <div class="team-header">
+            <h3 id="finalTeamAHeader" style="color:var(--team-blue)"><span id="finalTeamAName">A팀</span></h3>
+          </div>
+          <div id="finalTeamA"></div>
+        </div>
+        <div class="team-panel team-b">
+          <div class="team-header">
+            <h3 id="finalTeamBHeader" style="color:var(--team-red)"><span id="finalTeamBName">B팀</span></h3>
+          </div>
+          <div id="finalTeamB"></div>
+        </div>
+      </div>
+      <!-- 진영 선택 영역 (랜드/CK만) -->
+      <div id="sideSelectArea" style="display:none;margin-top:24px;text-align:center"></div>
+      <!-- 진영 사다리 영역 (사다리 진행 중) -->
+      <div id="sideLadderArea" style="display:none;margin-top:24px;text-align:center">
+        <div style="font-size:16px;font-weight:700;color:var(--green);margin-bottom:12px">🎮 진영 결정 사다리</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:16px">사다리를 타서 블루/레드 진영을 결정합니다!</div>
+      </div>
+      <div class="game-controls" style="margin-top:24px;flex-wrap:wrap">
+        <button id="startSideLadderBtn" class="game-btn primary" onclick="startSideLadder()" style="display:none">🎮 진영 사다리 타기</button>
+        <button class="game-btn primary" onclick="redraft()">🔄 다시 돌리기</button>
+        <button class="game-btn secondary" onclick="goBackToMembers()">⬅️ 이전으로</button>
+        <button class="game-btn secondary" onclick="resetAll()">🏠 처음으로</button>
+      </div>
+    </div>
+
+    <!-- 픽 애니메이션 오버레이 -->
+    <div id="pickAnimOverlay" class="pick-anim-overlay">
+      <div id="pickAnimCard" class="pick-anim-card">
+        <img id="pickAnimImg" src="icon.png">
+        <div id="pickAnimName" class="anim-name"></div>
+        <div id="pickAnimTeam" class="anim-team"></div>
+      </div>
+    </div>
+
+    <!-- 참가자 선택 모달 -->
+    <div class="pick-overlay" id="pickOverlay">
+      <div class="pick-modal">
+        <h3 id="pickTitle">사다리에 올릴 멤버를 선택하세요</h3>
+        <div id="pickOptions"></div>
+        <button onclick="closePickModal()" style="width:100%;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;margin-top:12px;font-family:inherit">취소</button>
+      </div>
+    </div>
+
+    <!-- 라인 선택 모달 -->
+    <div class="pick-overlay" id="lineSelectOverlay">
+      <div class="pick-modal" style="max-width:500px">
+        <h3 id="lineSelectTitle" style="font-size:18px">드래프트 할 라인을 선택하세요</h3>
+        <div id="lineSelectOptions" style="margin-bottom:12px"></div>
+        <div id="lineFirstPickArea" style="display:none;margin-top:12px;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--yellow)">⭐ 선픽권:</span>
+            <select id="lineFirstPickSelect" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer">
+              <option value="">없음 (사다리로 결정)</option>
+            </select>
+            <select id="lineFirstPickCountSelect" style="padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer">
+              <option value="always">계속 (매 라운드)</option>
+              <option value="once">1번만</option>
+            </select>
+            <span style="font-size:11px;color:var(--muted)">선픽권자가 먼저 뽑고, 상대가 뽑습니다</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button id="lineConfirmBtn" onclick="confirmLineSelection()" style="display:none;flex:1;padding:14px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:8px;color:#000;font-weight:900;font-size:15px;cursor:pointer;font-family:inherit">확인</button>
+          <button onclick="closeLineSelectModal()" style="flex:1;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-family:inherit;font-size:14px">취소</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 드래프트 방식 선택 모달 -->
+    <div class="pick-overlay" id="draftMethodOverlay">
+      <div class="pick-modal" style="max-width:460px">
+        <h3 style="font-size:20px;text-align:center;margin-bottom:16px">🎯 팀 뽑기 방식 선택</h3>
+        <div id="draftMethodOptions">
+          <div class="draft-method-option" onclick="selectDraftMethod('normal')">
+            <div class="dm-icon">⚔️</div>
+            <div><div class="dm-title">일반 드래프트</div>
+            <div class="dm-desc">사다리로 선/후를 정하고 번갈아 1명씩 뽑기</div></div>
+          </div>
+          <div class="draft-method-option" onclick="selectDraftMethod('random')">
+            <div class="dm-icon">🎲</div>
+            <div><div class="dm-title">랜덤 팀뽑기</div>
+            <div class="dm-desc">주사위를 굴려 랜덤으로 팀 배정!</div></div>
+          </div>
+          <div class="draft-method-option" onclick="selectDraftMethod('custom')">
+            <div class="dm-icon">👑</div>
+            <div><div class="dm-title">커스텀</div>
+            <div class="dm-desc">한 명이 팀원 전원 + 진영 선택권을 가짐</div></div>
+          </div>
+        </div>
+        <button onclick="closeDraftMethodModal()" style="width:100%;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;margin-top:12px;font-family:inherit;font-size:13px">취소</button>
+      </div>
+    </div>
+
+    <!-- 커스텀 픽커 선택 모달 -->
+    <div class="pick-overlay" id="customPickerOverlay">
+      <div class="pick-modal" style="max-width:420px">
+        <h3 style="font-size:18px;text-align:center">👑 커스텀 픽커를 선택하세요</h3>
+        <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px">이 사람이 팀원 전원 + 진영을 선택합니다</div>
+        <div id="customPickerOptions"></div>
+        <button onclick="closeCustomPickerModal()" style="width:100%;padding:12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;margin-top:12px;font-family:inherit;font-size:13px">취소</button>
+      </div>
+    </div>
+
+    <!-- 주사위 오버레이 -->
+    <div id="diceOverlay" class="dice-overlay">
+      <div id="diceContainer" class="dice-container"></div>
+      <div id="diceResultText" class="dice-result-text"></div>
+      <div id="randomAssignArea" class="random-assign-anim"></div>
+    </div>
+
+    <!-- 커스텀 설정 화면 -->
+    <div class="ladder-container" id="customDraftArea" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <h2 style="font-family:'Black Han Sans';font-size:26px;color:var(--yellow);margin:0">👑 <span id="customPickerName"></span> 커스텀</h2>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px" id="customDraftSubtitle">각 슬롯의 선택 방식을 정하세요</div>
+      </div>
+      <div id="customSlotSettings" style="display:flex;flex-direction:column;gap:10px;max-width:500px;margin:0 auto"></div>
+      <div style="text-align:center;margin-top:16px">
+        <button onclick="setAllCustomSlots('pick')" class="game-btn" style="padding:10px 20px;background:var(--yellow);color:#000;font-size:13px;font-weight:700;margin-right:8px;border-radius:8px">⭐ 전부 선픽권</button>
+        <button onclick="confirmCustomSettings()" class="game-btn primary" style="padding:12px 32px;font-size:15px">✅ 확인 — 드래프트 시작</button>
+      </div>
+    </div>
+
+    <!-- 포지션 선택 모달 -->
+    <div class="role-select-overlay" id="roleSelectOverlay">
+      <div class="role-select-modal">
+        <h3 style="text-align:center;font-size:16px;margin-bottom:4px">🎯 포지션 선택</h3>
+        <div id="roleSelectMemberName" style="text-align:center;font-size:13px;color:var(--green);font-weight:700;margin-bottom:16px"></div>
+        <div id="roleSelectOptions"></div>
+      </div>
+    </div>
+</div>
+
+<script>
+let currentTab = 'mission';
+let todayMembers = JSON.parse(localStorage.getItem('mk_today_members') || '[]');
+let gameHistory = JSON.parse(localStorage.getItem('mk_ladder_history') || '[]');
+
+// 게임 모드: 'solo' (솔랭내기) or 'land' (랜드/CK - 전원 맞벨)
+let gameMode = '';
+
+// 사다리 상태
+let ladderPlayers = [null, null]; // 사다리 2,3번 자리에 올릴 멤버
+let ladderRungs = []; // 가로줄 데이터 [{y, fromLine, toLine}]
+let rungCount = 3; // 가로줄 수 (2~10, 기본 3)
+let bottomLabels = ['X', '선', '후']; // 하단 라벨 (셔플 가능)
+let isLadderRunning = false;
+let ladderAnimResults = null; // 사다리 결과: {line0결과, line1결과, line2결과}
+
+// 드래프트 상태
+let captainFirst = null; // '선' 당첨자 {name,id,img}
+let captainSecond = null; // '후' 당첨자 {name,id,img}
+let teamA = [];
+let teamB = [];
+let draftPool = []; // 드래프트에서 남은 멤버
+let currentPickTeam = 'A'; // 현재 뽑는 팀
+let draftStarted = false;
+let draftRound = 0; // 현재 드래프트 라운드 (사다리 몇 번째인지)
+let draftInitialized = false; // 팀장 배정 완료 여부
+let firstPickId = ''; // 선픽권자 ID (비어있으면 사다리로 결정)
+let firstPickCount = 'always'; // 'once' = 1번만, 'always' = 계속
+let firstPickUsed = false; // 1번만일 때 사용됐는지
+
+// 진영 선택
+let teamSide = { A: 'blue', B: 'red' }; // 기본값
+let isSideLadder = false; // 진영 결정 사다리 모드
+
+// 드래프트 방식: 'normal' | 'random' | 'custom'
+let draftMethod = 'normal';
+let customPicker = null; // 커스텀 시 선택한 사람
+let customPickTeam = 'A'; // 커스텀 시 현재 넣을 팀
+
+// 포지션
+const ROLES = [
+  { key: 'top', name: '탑', icon: '🗡️' },
+  { key: 'jg', name: '정글', icon: '🌿' },
+  { key: 'mid', name: '미드', icon: '🔮' },
+  { key: 'adc', name: '원딜', icon: '🏹' },
+  { key: 'sup', name: '서폿', icon: '🛡️' }
+];
+let usedRolesA = []; // A팀에서 사용된 포지션 key
+let usedRolesB = []; // B팀에서 사용된 포지션 key
+let pendingPickMember = null; // 포지션 선택 대기 중인 멤버
+let pendingPickResolve = null; // 포지션 선택 Promise resolve
+
+// 멤버확정 & 라인 선택
+let membersConfirmed = false; // 멤버확정 여부
+let availableLines = []; // [{idx, a:member, b:member, drafted:false}, ...]
+let currentLine = null; // 현재 선택된 라인
+
+// 랜드/CK 모드 고정 10슬롯 (탑L,탑R,정글L,정글R,...,서폿L,서폿R)
+let landSlots = [null,null,null,null,null,null,null,null,null,null];
+
+// 맞벨 (솔랭: 수동 / 랜드CK: 전원 기본 맞벨)
+let matchedPairs = new Map(); // memberId -> partnerId
+
+// 인증 (테스트용 바이패스)
+let authToken = 'test';
+const rememberLogin = false;
+
+function doLogin(){ showMain(); }
+
+function showMain(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  currentTab = 'ladder';
+  updateStats();
+  resetAll();
+}
+
+// 자동 로그인
+setTimeout(showMain, 100);
+
+function switchTab(tab, btn){
+  currentTab = tab;
+  document.querySelectorAll('.nav-btn:not(.status)').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById(tab + 'Tab').classList.add('active');
+}
+
+// ========== 게임 모드 선택 ==========
+function selectGameMode(mode){
+  gameMode = mode;
+  document.getElementById('gameModeSelector').style.display = 'none';
+  document.getElementById('memberSection').style.display = '';
+
+  if(mode === 'solo'){
+    logEvent('솔랭 내기 모드: 멤버를 등록하고 맞벨을 설정하세요.');
+  } else {
+    // 랜드모드: landSlots 초기화 후 기존 todayMembers로 채우기
+    landSlots = [null,null,null,null,null,null,null,null,null,null];
+    for(let i = 0; i < todayMembers.length && i < 10; i++){
+      landSlots[i] = todayMembers[i];
+    }
+    logEvent('랜드/CK 모드: 전원 자동 맞벨! 멤버를 등록하세요.');
+  }
+  updateTodayMembersList();
+  updateMatchPairs();
+}
+
+// ========== 맞벨 페어 업데이트 ==========
+function updateMatchPairs(){
+  matchedPairs.clear();
+  if(gameMode === 'land'){
+    // 랜드/CK: 슬롯 페어 기반 맞벨 (0-1, 2-3, 4-5, 6-7, 8-9)
+    for(let i = 0; i < 10; i += 2){
+      const a = landSlots[i];
+      const b = landSlots[i + 1];
+      if(a && b){
+        matchedPairs.set(a.id, b.id);
+        matchedPairs.set(b.id, a.id);
+      }
+    }
+  }
+}
+
+// landSlots에서 todayMembers 동기화
+function syncTodayMembersFromSlots(){
+  todayMembers = landSlots.filter(s => s !== null);
+  saveTodayMembers();
+}
+
+// ========== 맞벨 수동 토글 (솔랭 모드) ==========
+function toggleManualMatch(memberId1, memberId2, checked){
+  if(checked){
+    // 기존 맞벨 해제
+    if(matchedPairs.has(memberId1)){
+      const oldPartner = matchedPairs.get(memberId1);
+      matchedPairs.delete(oldPartner);
+    }
+    if(matchedPairs.has(memberId2)){
+      const oldPartner = matchedPairs.get(memberId2);
+      matchedPairs.delete(oldPartner);
+    }
+    matchedPairs.set(memberId1, memberId2);
+    matchedPairs.set(memberId2, memberId1);
+  } else {
+    matchedPairs.delete(memberId1);
+    matchedPairs.delete(memberId2);
+  }
+  updateTodayMembersList();
+}
+
+// ========== 가로줄 수 변경 ==========
+function updateRungCount(val){
+  rungCount = Math.max(2, Math.min(10, parseInt(val) || 3));
+  document.getElementById('rungCount').value = rungCount;
+  drawLadder();
+}
+
+// ========== 사다리 참가자 선택 ==========
+function openPlayerSelect(slotIndex){
+  if(isLadderRunning || draftStarted) return;
+  const overlay = document.getElementById('pickOverlay');
+  const options = document.getElementById('pickOptions');
+  document.getElementById('pickTitle').textContent = (slotIndex + 2) + '번 자리에 올릴 멤버를 선택하세요';
+  options.innerHTML = '';
+
+  const available = todayMembers.filter(m => {
+    // 이미 다른 슬롯에 있으면 제외
+    const otherSlot = slotIndex === 0 ? 1 : 0;
+    return !(ladderPlayers[otherSlot] && ladderPlayers[otherSlot].id === m.id);
+  });
+
+  if(available.length === 0){
+    options.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px">등록된 멤버가 없습니다.</div>';
+  }
+
+  available.forEach(member => {
+    const opt = document.createElement('div');
+    opt.className = 'pick-option';
+    opt.innerHTML =
+      '<img src="' + (member.profileImage || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+      '<div><div class="pick-name">' + member.name + '</div><div class="pick-id">@' + member.id + '</div></div>';
+    opt.onclick = () => {
+      let imgUrl = member.profileImage || 'icon.png';
+      if(imgUrl && !imgUrl.startsWith('http') && imgUrl !== 'icon.png') imgUrl = 'https://res.sooplive.co.kr' + imgUrl;
+      ladderPlayers[slotIndex] = { name: member.name, id: member.id, img: imgUrl };
+      closePickModal();
+      renderLadderSlots();
+      drawLadder();
+      checkLadderReady();
+    };
+    options.appendChild(opt);
+  });
+
+  overlay.classList.add('active');
+}
+
+function closePickModal(){
+  document.getElementById('pickOverlay').classList.remove('active');
+}
+
+// ========== 사다리 슬롯 렌더링 ==========
+function renderLadderSlots(){
+  for(let i = 0; i < 2; i++){
+    const slot = document.getElementById('ladderSlot' + (i + 1));
+    if(!slot) continue;
+    const player = ladderPlayers[i];
+    if(player){
+      slot.innerHTML =
+        '<img src="' + (player.img || 'icon.png') + '" onerror="this.src=\'icon.png\'" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--green);margin-bottom:4px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--text)">' + player.name + '</div>' +
+        '<div style="font-size:9px;color:var(--muted)">클릭하여 변경</div>';
+      slot.style.borderStyle = 'solid';
+      slot.style.borderColor = 'var(--green)';
+      slot.style.background = 'rgba(74,222,128,.05)';
+    } else {
+      slot.innerHTML =
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">' + (i + 2) + '번 자리</div>' +
+        '<div style="font-size:13px;color:var(--text2)">멤버 클릭</div>';
+      slot.style.borderStyle = 'dashed';
+      slot.style.borderColor = 'var(--green)';
+      slot.style.background = 'var(--bg)';
+    }
+  }
+}
+
+// ========== 하단 라벨 셔플 (X/선/후 순서 변경) ==========
+function assignBottomLabel(slotIdx){
+  if(isLadderRunning) return;
+  // 셔플 로직: 클릭하면 순서를 랜덤으로 섞음
+  // 또는 직접 순서를 바꿀 수 있게 하는 방법도 있지만
+  // 사다리 게임의 의미는 어디에 뭐가 있는지 모르는 것이므로 랜덤 셔플
+  for(let i = bottomLabels.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [bottomLabels[i], bottomLabels[j]] = [bottomLabels[j], bottomLabels[i]];
+  }
+  renderBottomLabels();
+  drawLadder();
+  logEvent('하단 라벨이 셔플되었습니다! (숨김 상태로 진행)');
+}
+
+function renderBottomLabels(){
+  const btns = document.querySelectorAll('.ladder-bottom-btn');
+  // 실제 사다리 게임에서는 하단을 가려야 하므로 "?" 로 표시
+  // 결과가 나오면 공개
+  btns.forEach((btn, i) => {
+    if(ladderAnimResults){
+      // 결과 공개
+      const label = bottomLabels[i];
+      btn.textContent = label;
+      if(label === 'X'){ btn.style.borderColor = 'var(--red)'; btn.style.color = 'var(--red)'; btn.style.background = 'rgba(239,68,68,.1)'; }
+      else if(label === '선'){ btn.style.borderColor = 'var(--green)'; btn.style.color = 'var(--green)'; btn.style.background = 'rgba(74,222,128,.1)'; }
+      else { btn.style.borderColor = 'var(--yellow)'; btn.style.color = 'var(--yellow)'; btn.style.background = 'rgba(234,179,8,.1)'; }
+    } else {
+      // 숨김
+      btn.textContent = '?';
+      btn.style.borderColor = 'var(--border)';
+      btn.style.color = 'var(--text2)';
+      btn.style.background = 'rgba(255,255,255,.03)';
+    }
+  });
+}
+
+// ========== 사다리 준비 확인 ==========
+function checkLadderReady(){
+  const ready = ladderPlayers[0] && ladderPlayers[1];
+  document.getElementById('runLadderBtn').disabled = !ready;
+}
+
+// ========== 3줄 사다리 그리기 ==========
+function drawLadder(){
+  const canvas = document.getElementById('ladderCanvas');
+  if(!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const W = rect.width || 600;
+  const H = 340;
+  canvas.width = W * 2;
+  canvas.height = H * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.clearRect(0, 0, W, H);
+
+  // 가로줄 수가 없으면 랜덤 생성 (초기 표시용), 최소 3개 보장
+  if(!rungCount || rungCount < 3) rungCount = Math.floor(Math.random() * 5) + 3;
+
+  const lineCount = 3; // 항상 3줄 (X, 참가자1, 참가자2)
+  const padX = W * 0.12;
+  const padTop = 40;
+  const padBottom = 30;
+  const ladderH = H - padTop - padBottom;
+  const gap = (W - padX * 2) / (lineCount - 1);
+
+  // 상단 라벨 (X, 참가자1, 참가자2)
+  ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
+  ctx.textAlign = 'center';
+
+  // Line 0: X
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('X', padX, padTop - 12);
+
+  // Line 1: 참가자1
+  if(ladderPlayers[0]){
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText(ladderPlayers[0].name, padX + gap, padTop - 12);
+  } else {
+    ctx.fillStyle = '#557060';
+    ctx.fillText('?', padX + gap, padTop - 12);
+  }
+
+  // Line 2: 참가자2
+  if(ladderPlayers[1]){
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText(ladderPlayers[1].name, padX + gap * 2, padTop - 12);
+  } else {
+    ctx.fillStyle = '#557060';
+    ctx.fillText('?', padX + gap * 2, padTop - 12);
+  }
+
+  // 세로줄 3개
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = 'rgba(74,222,128,0.3)';
+  ctx.shadowBlur = 4;
+  for(let i = 0; i < lineCount; i++){
+    const x = padX + i * gap;
+    ctx.beginPath(); ctx.moveTo(x, padTop); ctx.lineTo(x, padTop + ladderH); ctx.stroke();
+  }
+
+  // 가로줄 랜덤 생성 — 0-1, 1-2 골고루 분배
+  ladderRungs = [];
+  for(let r = 0; r < rungCount; r++){
+    const y = padTop + (ladderH / (rungCount + 1)) * (r + 1);
+    // 홀수/짝수 번째 줄 교대 + 약간의 랜덤
+    let pair;
+    if(r % 2 === 0){
+      pair = Math.random() < 0.8 ? [0, 1] : [1, 2];
+    } else {
+      pair = Math.random() < 0.8 ? [1, 2] : [0, 1];
+    }
+    const [from, to] = pair;
+    ladderRungs.push({ y, fromLine: from, toLine: to });
+    ctx.beginPath();
+    ctx.moveTo(padX + from * gap, y);
+    ctx.lineTo(padX + to * gap, y);
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+}
+
+// ========== 사다리 다시 그리기 (애니메이션용) ==========
+function redrawLadder(){
+  const canvas = document.getElementById('ladderCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width / 2;
+  const H = 340;
+  const lineCount = 3;
+  const padX = W * 0.12;
+  const padTop = 40;
+  const padBottom = 30;
+  const ladderH = H - padTop - padBottom;
+  const gap = (W - padX * 2) / (lineCount - 1);
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 상단 라벨
+  ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText('X', padX, padTop - 12);
+  if(ladderPlayers[0]){ ctx.fillStyle = '#4ade80'; ctx.fillText(ladderPlayers[0].name, padX + gap, padTop - 12); }
+  else { ctx.fillStyle = '#557060'; ctx.fillText('?', padX + gap, padTop - 12); }
+  if(ladderPlayers[1]){ ctx.fillStyle = '#4ade80'; ctx.fillText(ladderPlayers[1].name, padX + gap * 2, padTop - 12); }
+  else { ctx.fillStyle = '#557060'; ctx.fillText('?', padX + gap * 2, padTop - 12); }
+
+  // 세로줄
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 3;
+  for(let i = 0; i < lineCount; i++){
+    ctx.beginPath(); ctx.moveTo(padX + i * gap, padTop); ctx.lineTo(padX + i * gap, padTop + ladderH); ctx.stroke();
+  }
+
+  // 가로줄
+  ladderRungs.forEach(rung => {
+    ctx.beginPath();
+    ctx.moveTo(padX + rung.fromLine * gap, rung.y);
+    ctx.lineTo(padX + rung.toLine * gap, rung.y);
+    ctx.stroke();
+  });
+}
+
+// ========== 3줄 사다리 경로 계산 ==========
+function calcLadderPath(startLine){
+  const canvas = document.getElementById('ladderCanvas');
+  const W = canvas.width / 2;
+  const lineCount = 3;
+  const padX = W * 0.12;
+  const padTop = 40;
+  const padBottom = 30;
+  const ladderH = 340 - padTop - padBottom;
+  const gap = (W - padX * 2) / (lineCount - 1);
+
+  let pos = startLine;
+  const xOf = p => padX + p * gap;
+  const path = [{ x: xOf(pos), y: padTop }];
+
+  // 가로줄을 y순으로 정렬
+  const sorted = [...ladderRungs].sort((a, b) => a.y - b.y);
+
+  for(const rung of sorted){
+    if(rung.fromLine === pos){
+      path.push({ x: xOf(pos), y: rung.y });
+      pos = rung.toLine;
+      path.push({ x: xOf(pos), y: rung.y });
+    } else if(rung.toLine === pos){
+      path.push({ x: xOf(pos), y: rung.y });
+      pos = rung.fromLine;
+      path.push({ x: xOf(pos), y: rung.y });
+    }
+  }
+
+  path.push({ x: xOf(pos), y: padTop + ladderH });
+  return { path, endLine: pos };
+}
+
+// ========== 사다리 애니메이션 ==========
+let skipAnimation = false; // 전체결과보기 플래그
+
+async function animateLadderPath(startLine, color){
+  const canvas = document.getElementById('ladderCanvas');
+  const ctx = canvas.getContext('2d');
+  const { path, endLine } = calcLadderPath(startLine);
+
+  if(skipAnimation){
+    // 스킵: 경로만 그리고 바로 끝
+    drawFullPath(ctx, path, color, endLine);
+    return endLine;
+  }
+
+  for(let i = 0; i < path.length - 1; i++){
+    const from = path[i];
+    const to = path[i + 1];
+    const dist = Math.sqrt((to.x - from.x) ** 2 + (to.y - from.y) ** 2);
+    const steps = Math.max(3, Math.round(dist / 12));
+    for(let s = 0; s <= steps; s++){
+      if(skipAnimation){
+        drawFullPath(ctx, path, color, endLine);
+        return endLine;
+      }
+      const t = s / steps;
+      const x = from.x + (to.x - from.x) * t;
+      const y = from.y + (to.y - from.y) * t;
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 5;
+      ctx.shadowColor = color + '80';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // 공
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+
+      await sleep(8);
+    }
+  }
+
+  // 최종 위치 마커
+  drawEndMarker(ctx, path[path.length - 1], color, endLine);
+  return endLine;
+}
+
+// 경로 전체를 한 번에 그리기 (스킵용)
+function drawFullPath(ctx, path, color, endLine){
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 5;
+  ctx.shadowColor = color + '80';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  for(let i = 1; i < path.length; i++){
+    ctx.lineTo(path[i].x, path[i].y);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  drawEndMarker(ctx, path[path.length - 1], color, endLine);
+}
+
+// 최종 위치 마커
+function drawEndMarker(ctx, pos, color, endLine){
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(pos.x, pos.y, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(bottomLabels[endLine], pos.x, pos.y);
+}
+
+// ========== 사다리 실행 ==========
+async function runLadder(){
+  if(isLadderRunning) return;
+  if(!ladderPlayers[0] || !ladderPlayers[1]){
+    logEvent('2명의 참가자를 배치해주세요!');
+    return;
+  }
+
+  isLadderRunning = true;
+  skipAnimation = false;
+  ladderAnimResults = null;
+  document.getElementById('runLadderBtn').disabled = true;
+  document.getElementById('showAllBtn').style.display = '';
+  document.getElementById('ladderResult').style.display = 'none';
+
+  // 가로줄 수 랜덤 (3~7)
+  rungCount = Math.floor(Math.random() * 5) + 3;
+
+  // 하단 라벨 셔플 (게임성: 무작위 배치)
+  for(let i = bottomLabels.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [bottomLabels[i], bottomLabels[j]] = [bottomLabels[j], bottomLabels[i]];
+  }
+  renderBottomLabels(); // 숨김 상태로 보여줌
+
+  // 사다리 새로 그리기
+  drawLadder();
+  await sleep(300);
+
+  logEvent('사다리 시작! 이름을 클릭하면 경로를 추적합니다.');
+
+  // 경로 미리 계산 (애니메이션 없이)
+  const colors = ['#ef4444', '#4ade80', '#86efac'];
+  const results = {};
+  for(let i = 0; i < 3; i++){
+    const { endLine } = calcLadderPath(i);
+    results[i] = { startLine: i, endLine, label: bottomLabels[endLine] };
+  }
+
+  // 참가자1 먼저 애니메이션 (클릭 대기 대신 바로 시작)
+  const firstAnim = Math.random() < 0.5 ? 1 : 2; // 랜덤으로 한 명
+  const end1 = await animateLadderPath(firstAnim, colors[firstAnim]);
+
+  if(!skipAnimation) await sleep(200);
+
+  // 나머지 2개 경로는 스킵모드로 바로 그리기
+  skipAnimation = true;
+  for(let i = 0; i < 3; i++){
+    if(i === firstAnim) continue;
+    await animateLadderPath(i, colors[i]);
+  }
+
+  ladderAnimResults = results;
+  document.getElementById('showAllBtn').style.display = 'none';
+
+  // 하단 라벨 공개
+  renderBottomLabels();
+
+  // 결과 분석
+  await sleep(300);
+  showLadderResult(results);
+
+  isLadderRunning = false;
+}
+
+// ========== 전체결과보기 (애니메이션 스킵) ==========
+function showAllResults(){
+  skipAnimation = true;
+}
+
+// ========== 사다리 결과 표시 ==========
+function showLadderResult(results){
+  // 진영 사다리 모드 분기
+  if(isSideLadder){
+    showSideLadderResult(results);
+    return;
+  }
+
+  const resultDiv = document.getElementById('ladderResult');
+  const content = document.getElementById('ladderResultContent');
+  resultDiv.style.display = '';
+
+  // 2명만 있으므로: 한 명이 선이면 다른 한 명은 자동으로 후
+  // startLine 1 = 참가자1, startLine 2 = 참가자2
+  const p1Label = results[1].label; // 참가자1이 도착한 라벨
+  const p2Label = results[2].label; // 참가자2가 도착한 라벨
+
+  let firstCaptain = null; // 선
+  let secondCaptain = null; // 후
+
+  // 직접 선에 도착한 사람 찾기
+  if(p1Label === '선'){
+    firstCaptain = ladderPlayers[0];
+    secondCaptain = ladderPlayers[1];
+  } else if(p2Label === '선'){
+    firstCaptain = ladderPlayers[1];
+    secondCaptain = ladderPlayers[0];
+  } else if(p1Label === '후'){
+    // 참가자1이 후 → 참가자2가 선
+    firstCaptain = ladderPlayers[1];
+    secondCaptain = ladderPlayers[0];
+  } else if(p2Label === '후'){
+    // 참가자2가 후 → 참가자1이 선
+    firstCaptain = ladderPlayers[0];
+    secondCaptain = ladderPlayers[1];
+  } else {
+    // 둘 다 X가 아닌 경우는 없지만 (3줄이니까), 만약 둘 다 X가 아니면 랜덤
+    // 한 명이 X에 도착했으면 나머지 한 명이 선 또는 후에 갈 수밖에 없음
+    // 하지만 둘 다 X에 도달할 수는 없으므로 위 조건에서 처리됨
+    // 혹시 모를 예외: 참가자1이 X면 참가자2가 선 or 후
+    if(p1Label === 'X'){
+      if(p2Label === '선'){ firstCaptain = ladderPlayers[1]; secondCaptain = ladderPlayers[0]; }
+      else { firstCaptain = ladderPlayers[0]; secondCaptain = ladderPlayers[1]; }
+    } else {
+      if(p1Label === '선'){ firstCaptain = ladderPlayers[0]; secondCaptain = ladderPlayers[1]; }
+      else { firstCaptain = ladderPlayers[1]; secondCaptain = ladderPlayers[0]; }
+    }
+  }
+
+  // 결과 표시: 참가자별로 선/후 결과
+  const resultTexts = [
+    { name: firstCaptain.name, result: '선', color: '#4ade80' },
+    { name: secondCaptain.name, result: '후', color: '#eab308' }
+  ];
+
+  content.innerHTML = resultTexts.map(r =>
+    '<div style="padding:16px 24px;background:var(--card2);border:2px solid ' + r.color + ';border-radius:8px;min-width:140px">' +
+    '<div style="font-size:20px;font-weight:900;color:' + r.color + '">' + r.result + '</div>' +
+    '<div style="font-size:14px;color:var(--text);margin-top:6px;font-weight:700">' + r.name + '</div></div>'
+  ).join('');
+
+  captainFirst = firstCaptain;
+  captainSecond = secondCaptain;
+
+  if(!draftInitialized){
+    logEvent(firstCaptain.name + ' = 선(먼저 뽑기), ' + secondCaptain.name + ' = 후(나중에 뽑기)');
+    const btnLabel = firstPickId
+      ? '⚔️ 팀원 드래프트 시작 (선픽권: ' + (todayMembers.find(m=>m.id===firstPickId)?.name||'') + ')'
+      : '⚔️ 팀원 드래프트 시작';
+    content.innerHTML += '<div style="width:100%;margin-top:12px;text-align:center">' +
+      '<button class="game-btn primary" onclick="startDraft()" style="padding:12px 32px;font-size:15px">' + btnLabel + '</button></div>';
+  } else {
+    logEvent('라운드 ' + (draftRound + 1) + ': ' + firstCaptain.name + ' = 선!');
+    content.innerHTML += '<div style="width:100%;margin-top:12px;text-align:center">' +
+      '<button class="game-btn primary" onclick="startDraft()" style="padding:12px 32px;font-size:15px">⚔️ 팀원 뽑기 시작</button></div>';
+  }
+}
+
+// ========== 진영 사다리 결과 처리 ==========
+function showSideLadderResult(results){
+  // ladderPlayers[0] = A팀장 (line 1), ladderPlayers[1] = B팀장 (line 2)
+  const p1Label = results[1].label; // A팀장이 도착한 라벨
+  const p2Label = results[2].label; // B팀장이 도착한 라벨
+
+  // A팀장이 🔵에 도착하면 A=블루, 🔴에 도착하면 A=레드
+  if(p1Label === '🔵'){
+    teamSide = { A: 'blue', B: 'red' };
+  } else if(p1Label === '🔴'){
+    teamSide = { A: 'red', B: 'blue' };
+  } else if(p2Label === '🔵'){
+    teamSide = { A: 'red', B: 'blue' };
+  } else if(p2Label === '🔴'){
+    teamSide = { A: 'blue', B: 'red' };
+  }
+
+  isSideLadder = false;
+
+  // 사다리 결과 표시
+  const resultDiv = document.getElementById('ladderResult');
+  const content = document.getElementById('ladderResultContent');
+  resultDiv.style.display = '';
+
+  const aIsBlue = teamSide.A === 'blue';
+  content.innerHTML =
+    '<div style="padding:16px 24px;background:var(--card2);border:2px solid ' + (aIsBlue ? 'var(--team-blue)' : 'var(--team-red)') + ';border-radius:8px;min-width:140px">' +
+    '<div style="font-size:20px;font-weight:900;color:' + (aIsBlue ? 'var(--team-blue)' : 'var(--team-red)') + '">' + (aIsBlue ? '🔵 블루' : '🔴 레드') + '</div>' +
+    '<div style="font-size:14px;color:var(--text);margin-top:6px;font-weight:700">' + teamA[0].name + '팀</div></div>' +
+    '<div style="padding:16px 24px;background:var(--card2);border:2px solid ' + (aIsBlue ? 'var(--team-red)' : 'var(--team-blue)') + ';border-radius:8px;min-width:140px">' +
+    '<div style="font-size:20px;font-weight:900;color:' + (aIsBlue ? 'var(--team-red)' : 'var(--team-blue)') + '">' + (aIsBlue ? '🔴 레드' : '🔵 블루') + '</div>' +
+    '<div style="font-size:14px;color:var(--text);margin-top:6px;font-weight:700">' + teamB[0].name + '팀</div></div>';
+
+  applyTeamColors();
+
+  const aName = aIsBlue ? '블루팀' : '레드팀';
+  const bName = aIsBlue ? '레드팀' : '블루팀';
+  logEvent('진영 결정! ' + teamA[0].name + '팀 = ' + aName + ', ' + teamB[0].name + '팀 = ' + bName);
+
+  // 잠시 후 사다리 숨기고 완료 화면으로
+  content.innerHTML += '<div style="width:100%;margin-top:12px;text-align:center">' +
+    '<button class="game-btn primary" onclick="finishSideLadder()" style="padding:12px 32px;font-size:15px">✅ 확인</button></div>';
+}
+
+function finishSideLadder(){
+  document.getElementById('draftArea').style.display = 'none';
+  document.getElementById('ladderSection').style.display = 'none';
+  document.getElementById('ladderResult').style.display = 'none';
+  document.getElementById('teamCompleteArea').style.display = '';
+
+  // 최종 팀 다시 렌더링 (색상 반영)
+  const renderFinalTeam = (arr, containerId) => {
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    arr.forEach(m => {
+      c.innerHTML += '<div class="team-slot filled">' +
+        '<img src="' + (m.img || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="slot-name">' + m.name + '</div>' +
+        '<div class="slot-role">' + (m.role === 'PICK' ? 'PICK' : m.role || 'PICK') + '</div></div></div>';
+    });
+  };
+  renderFinalTeam(teamA, 'finalTeamA');
+  renderFinalTeam(teamB, 'finalTeamB');
+}
+
+// ========== 드래프트 시작 ==========
+async function startDraft(){
+  if(!captainFirst || !captainSecond) return;
+
+  draftRound++;
+  draftStarted = true;
+  picksThisRound = 0;
+
+  // 첫 라운드: 팀장 배정 + 팀장 포지션 선택
+  if(!draftInitialized){
+    draftInitialized = true;
+
+    // 선 팀장 포지션 선택
+    currentPickTeam = 'A';
+    const roleFirst = await selectRole(captainFirst);
+    usedRolesA.push(roleFirst.key);
+    teamA = [{ name: captainFirst.name, id: captainFirst.id, img: captainFirst.img, role: roleFirst.icon + ' ' + roleFirst.name }];
+
+    // 후 팀장 포지션 선택
+    currentPickTeam = 'B';
+    const roleSecond = await selectRole(captainSecond);
+    usedRolesB.push(roleSecond.key);
+    teamB = [{ name: captainSecond.name, id: captainSecond.id, img: captainSecond.img, role: roleSecond.icon + ' ' + roleSecond.name }];
+
+    if(gameMode === 'solo'){
+      // 솔랭: 현재 페어만 풀에 넣기 (캡틴 제외 = 빈 풀)
+      draftPool = draftPool.filter(m => m.id !== captainFirst.id && m.id !== captainSecond.id);
+    } else {
+      draftPool = todayMembers.filter(m => m.id !== captainFirst.id && m.id !== captainSecond.id);
+    }
+
+    // 풀이 비었으면 바로 다음 단계로
+    if(draftPool.length === 0){
+      if(gameMode === 'solo'){
+        const nextLine = availableLines.find(l => !l.drafted);
+        if(nextLine){
+          setTimeout(() => startNextSoloLadder(), 800);
+        } else {
+          setTimeout(() => showTeamComplete(), 800);
+        }
+      } else {
+        setTimeout(() => showTeamComplete(), 800);
+      }
+      return;
+    }
+  }
+
+  document.getElementById('draftSection').style.display = '';
+  document.getElementById('ladderSetupArea').style.display = 'none';
+  document.getElementById('ladderSection').style.display = 'none';
+  document.getElementById('ladderResult').style.display = 'none';
+  document.getElementById('runLadderBtn').style.display = 'none';
+  document.getElementById('showAllBtn').style.display = 'none';
+
+  document.getElementById('captainALabel').textContent = '(팀장: ' + teamA[0].name + ')';
+  document.getElementById('captainBLabel').textContent = '(팀장: ' + teamB[0].name + ')';
+
+  // 선픽권 유효 여부 판단 (1번만이고 이미 사용했으면 무효)
+  const isFirstPickActive = firstPickId && !(firstPickCount === 'once' && firstPickUsed);
+
+  if(isFirstPickActive){
+    // 선픽권자가 먼저 뽑기
+    if(firstPickId === teamA[0].id){
+      currentPickTeam = 'A';
+    } else if(firstPickId === teamB[0].id){
+      currentPickTeam = 'B';
+    } else {
+      currentPickTeam = captainFirst.id === teamA[0].id ? 'A' : 'B';
+    }
+  } else {
+    // 사다리 선 걸린 사람이 뽑기
+    currentPickTeam = captainFirst.id === teamA[0].id ? 'A' : 'B';
+  }
+  renderDraft();
+
+  const whoPicksName = currentPickTeam === 'A' ? teamA[0].name : teamB[0].name;
+  const pickReason = isFirstPickActive ? '선픽권' : '선';
+  logEvent('라운드 ' + draftRound + ': ' + whoPicksName + '(' + pickReason + ', ' + currentPickTeam + '팀)이 1명을 뽑습니다!');
+}
+
+// ========== 드래프트 렌더링 ==========
+function renderDraft(){
+  // 남은 멤버
+  const poolDiv = document.getElementById('draftPool');
+  poolDiv.innerHTML = '';
+  document.getElementById('remainingMembers').textContent = draftPool.length;
+
+  if(draftPool.length === 0){
+    poolDiv.innerHTML = '<div style="text-align:center;color:var(--muted);padding:20px;font-size:14px">모든 멤버가 배정되었습니다!</div>';
+  } else {
+    draftPool.forEach(member => {
+      const card = document.createElement('div');
+      card.className = 'member-card';
+      card.style.cursor = 'pointer';
+      card.onclick = () => draftPick(member);
+
+      const img = document.createElement('img');
+      img.src = member.profileImage || 'icon.png';
+      img.onerror = function(){ this.src = 'icon.png'; };
+
+      const info = document.createElement('div');
+      info.className = 'info';
+      info.innerHTML = '<div class="name">' + member.name + '</div><div class="id">@' + member.id + '</div>';
+
+      card.appendChild(img);
+      card.appendChild(info);
+      poolDiv.appendChild(card);
+    });
+  }
+
+  // 드래프트 순서 정보
+  const aName = teamA.length > 0 ? teamA[0].name : '?';
+  const bName = teamB.length > 0 ? teamB[0].name : '?';
+  const teamALabel = document.getElementById('teamAName')?.textContent || 'A팀';
+  const teamBLabel = document.getElementById('teamBName')?.textContent || 'B팀';
+  let orderHtml = '라운드 ' + draftRound + ' | ' + teamALabel + ': ' + aName + ' | ' + teamBLabel + ': ' + bName;
+  const fpActive = firstPickId && !(firstPickCount === 'once' && firstPickUsed);
+  if(firstPickId){
+    if(fpActive){
+      orderHtml += ' | <span style="color:var(--yellow);font-weight:700">⭐선픽권</span>';
+    } else {
+      orderHtml += ' | <span style="color:var(--muted)">선픽권 사용완료</span>';
+    }
+  }
+  document.getElementById('draftOrderInfo').innerHTML = orderHtml;
+
+  const pickName = currentPickTeam === 'A' ? aName : bName;
+  const pickLabel = firstPickId ? '선픽' : '선';
+  document.getElementById('draftTurnInfo').innerHTML =
+    draftPool.length > 0
+      ? '🟢 ' + pickName + '(' + (currentPickTeam === 'A' ? teamALabel : teamBLabel) + ') 1명 뽑기!'
+      : '✅ 드래프트 완료!';
+
+  // 팀 슬롯
+  renderDraftTeamSlots();
+}
+
+function renderDraftTeamSlots(){
+  ['A', 'B'].forEach(team => {
+    const arr = team === 'A' ? teamA : teamB;
+    const container = document.getElementById('team' + team + 'Slots');
+    container.innerHTML = '';
+    document.getElementById('team' + team + 'Count').textContent = arr.length + '명';
+    arr.forEach(m => {
+      container.innerHTML += '<div class="team-slot filled">' +
+        '<img src="' + (m.img || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="slot-name">' + m.name + '</div>' +
+        '<div class="slot-role">' + (m.role === 'PICK' ? 'PICK' : m.role || 'PICK') + '</div></div></div>';
+    });
+  });
+}
+
+// ========== 라운드 내 픽 카운트 ==========
+let picksThisRound = 0; // 이번 라운드에서 뽑은 횟수
+
+// ========== 포지션 선택 ==========
+function selectRole(member){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('roleSelectOverlay');
+    const options = document.getElementById('roleSelectOptions');
+    const nameEl = document.getElementById('roleSelectMemberName');
+    nameEl.textContent = member.name + ' 포지션 선택';
+
+    const usedRoles = currentPickTeam === 'A' ? usedRolesA : usedRolesB;
+    options.innerHTML = '';
+    ROLES.forEach(r => {
+      const btn = document.createElement('button');
+      const isUsed = usedRoles.includes(r.key);
+      btn.className = 'role-btn' + (isUsed ? ' used' : '');
+      btn.innerHTML = '<span class="role-icon">' + r.icon + '</span><span class="role-name">' + r.name + '</span>';
+      if(!isUsed){
+        btn.onclick = () => {
+          overlay.classList.remove('active');
+          resolve(r);
+        };
+      }
+      options.appendChild(btn);
+    });
+    overlay.classList.add('active');
+  });
+}
+
+// ========== 드래프트 멤버 선택 ==========
+async function draftPick(member){
+  if(draftPool.length === 0) return;
+
+  // 포지션 선택
+  const role = await selectRole(member);
+
+  let imgUrl = member.profileImage || 'icon.png';
+  if(imgUrl && !imgUrl.startsWith('http') && imgUrl !== 'icon.png') imgUrl = 'https://res.sooplive.co.kr' + imgUrl;
+
+  const pickMember = { name: member.name, id: member.id, img: imgUrl, role: role.icon + ' ' + role.name };
+  const teamColor = currentPickTeam === 'A' ? 'var(--team-blue)' : 'var(--team-red)';
+  const teamLabel = currentPickTeam === 'A' ? (document.getElementById('teamAName')?.textContent || 'A팀') : (document.getElementById('teamBName')?.textContent || 'B팀');
+
+  // 사용된 포지션 기록
+  if(currentPickTeam === 'A') usedRolesA.push(role.key);
+  else usedRolesB.push(role.key);
+
+  // 픽 애니메이션
+  await showPickAnimation(pickMember, teamLabel, teamColor);
+
+  if(currentPickTeam === 'A'){
+    teamA.push(pickMember);
+  } else {
+    teamB.push(pickMember);
+  }
+  logEvent(teamLabel + '이(가) ' + member.name + '을(를) ' + role.name + '으로 선택!');
+
+  // 풀에서 제거
+  draftPool = draftPool.filter(m => m.id !== member.id);
+
+  // 맞벨 처리: 파트너는 반대팀으로 같은 포지션 자동 배정
+  const partnerId = matchedPairs.get(member.id);
+  if(partnerId){
+    const partnerInPool = draftPool.find(m => m.id === partnerId);
+    if(partnerInPool){
+      let pImgUrl = partnerInPool.profileImage || 'icon.png';
+      if(pImgUrl && !pImgUrl.startsWith('http') && pImgUrl !== 'icon.png') pImgUrl = 'https://res.sooplive.co.kr' + pImgUrl;
+      const partnerMember = { name: partnerInPool.name, id: partnerInPool.id, img: pImgUrl, role: role.icon + ' ' + role.name };
+
+      const oppositeTeam = currentPickTeam === 'A' ? 'B' : 'A';
+      if(oppositeTeam === 'A'){ teamA.push(partnerMember); usedRolesA.push(role.key); }
+      else { teamB.push(partnerMember); usedRolesB.push(role.key); }
+      draftPool = draftPool.filter(m => m.id !== partnerId);
+      logEvent('맞벨! ' + partnerInPool.name + ' → ' + oppositeTeam + '팀 ' + role.name + ' 자동 배정');
+    }
+  }
+
+  picksThisRound++;
+
+  // 마지막 1명 남으면 인원 적은 팀으로 자동 배정
+  if(draftPool.length === 1){
+    const lastMember = draftPool[0];
+    let lImgUrl = lastMember.profileImage || 'icon.png';
+    if(lImgUrl && !lImgUrl.startsWith('http') && lImgUrl !== 'icon.png') lImgUrl = 'https://res.sooplive.co.kr' + lImgUrl;
+    const smallerTeam = teamA.length <= teamB.length ? 'A' : 'B';
+    // 남은 포지션 자동 배정
+    const usedR = smallerTeam === 'A' ? usedRolesA : usedRolesB;
+    const remainRole = ROLES.find(r => !usedR.includes(r.key)) || { key: 'fill', name: 'FILL', icon: '🎮' };
+    const lastPick = { name: lastMember.name, id: lastMember.id, img: lImgUrl, role: remainRole.icon + ' ' + remainRole.name };
+    if(smallerTeam === 'A'){ teamA.push(lastPick); usedRolesA.push(remainRole.key); }
+    else { teamB.push(lastPick); usedRolesB.push(remainRole.key); }
+    draftPool = [];
+    logEvent('마지막 1명! ' + lastMember.name + ' → ' + smallerTeam + '팀 ' + remainRole.name + ' 자동 배정');
+  }
+
+  renderDraft();
+
+  // 드래프트 완료 체크
+  if(draftPool.length === 0){
+    if(draftMethod === 'custom'){ onCustomPickDone(); return; }
+    // 솔랭: 다음 페어가 있으면 자동 진행
+    if(gameMode === 'solo'){
+      const nextLine = availableLines.find(l => !l.drafted);
+      if(nextLine){
+        setTimeout(() => startNextSoloLadder(), 1000);
+        return;
+      }
+    }
+    setTimeout(() => showTeamComplete(), 1000);
+    return;
+  }
+
+  // 커스텀 모드
+  if(draftMethod === 'custom'){
+    // 사다리 슬롯: 선 1명 + 후 1명 = 2명 뽑기 (2슬롯 소비)
+    if(customSlots[customStep] && customSlots[customStep].type === 'ladder'){
+      if(picksThisRound < 2){
+        currentPickTeam = currentPickTeam === 'A' ? 'B' : 'A';
+        renderDraft();
+        const nextName = currentPickTeam === 'A' ? teamA[0].name : teamB[0].name;
+        logEvent(nextName + '(후) 차례! 1명을 뽑으세요.');
+        return;
+      }
+      // 2명 다 뽑음 → 2슬롯 소비
+      customStep++; // 현재 사다리 슬롯 + 다음 슬롯
+      onCustomPickDone();
+      return;
+    }
+    // 일반 선/후 슬롯: 1명만
+    onCustomPickDone();
+    return;
+  }
+
+  // 선픽권 유효 여부 (1번만이고 이미 사용했으면 무효)
+  const isFirstPickActive = firstPickId && !(firstPickCount === 'once' && firstPickUsed);
+
+  if(isFirstPickActive){
+    // 선픽권 모드: 2명이 번갈아 뽑음 (선픽권자 → 상대 → 사다리)
+    if(picksThisRound < 2){
+      // 상대 차례
+      currentPickTeam = currentPickTeam === 'A' ? 'B' : 'A';
+      renderDraft();
+      const nextName = currentPickTeam === 'A' ? teamA[0].name : teamB[0].name;
+      logEvent(nextName + '(' + currentPickTeam + '팀) 차례! 1명을 뽑으세요.');
+    } else {
+      // 2명 다 뽑음 → 선픽권 사용 완료 표시
+      if(firstPickCount === 'once') firstPickUsed = true;
+      setTimeout(() => returnToLadder(), 800);
+    }
+  } else {
+    // 일반 모드: 선 1명 → 후 1명 → 다시 사다리
+    if(picksThisRound < 2){
+      currentPickTeam = currentPickTeam === 'A' ? 'B' : 'A';
+      renderDraft();
+      const nextName = currentPickTeam === 'A' ? teamA[0].name : teamB[0].name;
+      logEvent(nextName + '(' + currentPickTeam + '팀, 후) 차례! 1명을 뽑으세요.');
+    } else {
+      setTimeout(() => returnToLadder(), 800);
+    }
+  }
+}
+
+// ========== 솔랭: 다음 페어 자동 사다리 ==========
+function startNextSoloLadder(){
+  const nextLine = availableLines.find(l => !l.drafted);
+  if(!nextLine){
+    showTeamComplete();
+    return;
+  }
+
+  currentLine = nextLine;
+  currentLine.drafted = true;
+  firstPickId = '';
+  firstPickCount = 'always';
+  firstPickUsed = false;
+  picksThisRound = 0;
+  draftInitialized = false;
+  captainFirst = null;
+  captainSecond = null;
+
+  const m0 = nextLine.a;
+  const m1 = nextLine.b;
+
+  let img0 = m0.profileImage || 'icon.png';
+  if(img0 && !img0.startsWith('http') && img0 !== 'icon.png') img0 = 'https://res.sooplive.co.kr' + img0;
+  let img1 = m1.profileImage || 'icon.png';
+  if(img1 && !img1.startsWith('http') && img1 !== 'icon.png') img1 = 'https://res.sooplive.co.kr' + img1;
+
+  ladderPlayers[0] = { name: m0.name, id: m0.id, img: img0 };
+  ladderPlayers[1] = { name: m1.name, id: m1.id, img: img1 };
+
+  // 이 페어의 2명을 draftPool에 넣기
+  draftPool = [m0, m1];
+
+  document.getElementById('draftArea').style.display = '';
+  document.getElementById('ladderSetupArea').style.display = 'none';
+  document.getElementById('ladderSection').style.display = '';
+  document.getElementById('draftSection').style.display = 'none';
+  document.getElementById('ladderResult').style.display = 'none';
+  const runBtn = document.getElementById('runLadderBtn');
+  runBtn.style.display = '';
+  runBtn.disabled = false;
+  const swapBtn = document.getElementById('swapLadderBtn');
+  if(swapBtn) swapBtn.style.display = '';
+
+  bottomLabels = ['X', '선', '후'];
+  ladderRungs = [];
+  ladderAnimResults = null;
+  isLadderRunning = false;
+
+  renderLadderSlots();
+  renderBottomLabels();
+  drawLadder();
+
+  const pairNum = availableLines.filter(l => l.drafted).length;
+  const totalPairs = availableLines.length;
+  logEvent('페어 ' + pairNum + '/' + totalPairs + ': ' + m0.name + ' vs ' + m1.name + ' 사다리! ▶ 시작을 눌러주세요!');
+}
+
+// ========== 1명 뽑은 후 다시 사다리로 ==========
+function returnToLadder(){
+  document.getElementById('draftSection').style.display = 'none';
+
+  // 사다리 상태 리셋
+  ladderRungs = [];
+  ladderAnimResults = null;
+  isLadderRunning = false;
+  skipAnimation = false;
+  bottomLabels = ['X', '선', '후'];
+
+  // 선픽권 유효 여부 확인
+  const isFirstPickActive = firstPickId && !(firstPickCount === 'once' && firstPickUsed);
+
+  if(isFirstPickActive){
+    // 선픽권 유효 → 사다리 생략, 바로 다음 픽
+    logEvent('선픽권 유효! ' + captainFirst.name + '이(가) 다시 먼저 뽑습니다. (남은: ' + draftPool.length + '명)');
+    startDraft();
+  } else {
+    // 사다리 다시 보이기 (참가자는 그대로 유지, 셋업 영역 숨김)
+    document.getElementById('ladderSetupArea').style.display = 'none';
+    document.getElementById('ladderSection').style.display = '';
+    document.getElementById('ladderResult').style.display = 'none';
+    const runBtn = document.getElementById('runLadderBtn');
+    runBtn.style.display = '';
+    runBtn.disabled = false;
+    const swapBtn = document.getElementById('swapLadderBtn');
+    if(swapBtn) swapBtn.style.display = '';
+
+    renderLadderSlots();
+    renderBottomLabels();
+    drawLadder();
+
+    logEvent('라운드 ' + (draftRound + 1) + ' 준비! ▶ 사다리 시작을 눌러 선/후를 다시 정하세요. (남은 멤버: ' + draftPool.length + '명)');
+  }
+}
+
+// ========== 다시 돌리기 (같은 방식으로 재시작) ==========
+function redraft(){
+  const savedMode = gameMode;
+  const savedMethod = draftMethod;
+  const savedMembers = [...todayMembers];
+
+  // 드래프트 상태만 초기화
+  document.getElementById('teamCompleteArea').style.display = 'none';
+  document.getElementById('draftArea').style.display = 'none';
+  const sideLadderArea = document.getElementById('sideLadderArea');
+  if(sideLadderArea) sideLadderArea.style.display = 'none';
+  const sideLadderBtn = document.getElementById('startSideLadderBtn');
+  if(sideLadderBtn) sideLadderBtn.style.display = 'none';
+  const sideSelectArea = document.getElementById('sideSelectArea');
+  if(sideSelectArea) sideSelectArea.style.display = 'none';
+
+  captainFirst = null;
+  captainSecond = null;
+  teamA = [];
+  teamB = [];
+  draftPool = [];
+  draftStarted = false;
+  draftRound = 0;
+  draftInitialized = false;
+  firstPickId = '';
+  firstPickCount = 'always';
+  firstPickUsed = false;
+  currentLine = null;
+  picksThisRound = 0;
+  currentPickTeam = 'A';
+  teamSide = { A: 'blue', B: 'red' };
+  isSideLadder = false;
+  customPicker = null;
+  customPickTeam = 'A';
+  customSlots = [];
+  customStep = 0;
+  customCounterPicker = null;
+  usedRolesA = [];
+  usedRolesB = [];
+  ladderPlayers = [null, null];
+  ladderRungs = [];
+  ladderAnimResults = null;
+  isLadderRunning = false;
+  bottomLabels = ['X', '선', '후'];
+
+  // 팀 이름 복원
+  const teamANameEl = document.getElementById('teamAName');
+  const teamBNameEl = document.getElementById('teamBName');
+  if(teamANameEl) teamANameEl.textContent = 'A팀';
+  if(teamBNameEl) teamBNameEl.textContent = 'B팀';
+  const fAName = document.getElementById('finalTeamAName');
+  const fBName = document.getElementById('finalTeamBName');
+  if(fAName) fAName.textContent = 'A팀';
+  if(fBName) fBName.textContent = 'B팀';
+
+  // 라인 재생성
+  availableLines = [];
+  for(let i = 0; i < todayMembers.length; i += 2){
+    availableLines.push({ idx: i / 2, a: todayMembers[i], b: todayMembers[i + 1], drafted: false });
+  }
+
+  // 멤버 섹션 복원
+  const memberSection = document.getElementById('memberSection');
+  if(memberSection){ memberSection.style.maxHeight = ''; memberSection.style.overflow = ''; memberSection.style.opacity = ''; }
+
+  draftMethod = savedMethod;
+
+  if(savedMethod === 'random'){
+    startRandomTeamDraft();
+  } else if(savedMethod === 'custom'){
+    openCustomPickerModal();
+  } else if(gameMode === 'solo'){
+    startNextSoloLadder();
+  } else {
+    autoSelectFirstLine();
+  }
+  logEvent('다시 돌리기! 같은 방식으로 재시작합니다.');
+}
+
+// ========== 이전으로 돌아가기 (멤버 확정 상태로) ==========
+function goBackToMembers(){
+  const savedMode = gameMode;
+
+  // 드래프트 상태 초기화
+  document.getElementById('teamCompleteArea').style.display = 'none';
+  document.getElementById('draftArea').style.display = 'none';
+  document.getElementById('customDraftArea').style.display = 'none';
+  const sideLadderArea2 = document.getElementById('sideLadderArea');
+  if(sideLadderArea2) sideLadderArea2.style.display = 'none';
+  const sideLadderBtn2 = document.getElementById('startSideLadderBtn');
+  if(sideLadderBtn2) sideLadderBtn2.style.display = 'none';
+  const sideSelectArea2 = document.getElementById('sideSelectArea');
+  if(sideSelectArea2) sideSelectArea2.style.display = 'none';
+
+  captainFirst = null;
+  captainSecond = null;
+  teamA = [];
+  teamB = [];
+  draftPool = [];
+  draftStarted = false;
+  draftRound = 0;
+  draftInitialized = false;
+  firstPickId = '';
+  firstPickCount = 'always';
+  firstPickUsed = false;
+  currentLine = null;
+  picksThisRound = 0;
+  currentPickTeam = 'A';
+  teamSide = { A: 'blue', B: 'red' };
+  isSideLadder = false;
+  draftMethod = 'normal';
+  customPicker = null;
+  customPickTeam = 'A';
+  customSlots = [];
+  customStep = 0;
+  customCounterPicker = null;
+  usedRolesA = [];
+  usedRolesB = [];
+  ladderPlayers = [null, null];
+  ladderRungs = [];
+  ladderAnimResults = null;
+  isLadderRunning = false;
+  bottomLabels = ['X', '선', '후'];
+
+  // 팀 이름 복원
+  const teamANameEl = document.getElementById('teamAName');
+  const teamBNameEl = document.getElementById('teamBName');
+  if(teamANameEl) teamANameEl.textContent = 'A팀';
+  if(teamBNameEl) teamBNameEl.textContent = 'B팀';
+  const fAName = document.getElementById('finalTeamAName');
+  const fBName = document.getElementById('finalTeamBName');
+  if(fAName) fAName.textContent = 'A팀';
+  if(fBName) fBName.textContent = 'B팀';
+
+  membersConfirmed = false;
+  availableLines.forEach(l => l.drafted = false);
+
+  // 랜드모드: landSlots 복원
+  if(savedMode === 'land'){
+    landSlots = [null,null,null,null,null,null,null,null,null,null];
+    for(let i = 0; i < todayMembers.length && i < 10; i++){
+      landSlots[i] = todayMembers[i];
+    }
+  }
+
+  // 멤버 섹션 복원 & 표시
+  const memberSection = document.getElementById('memberSection');
+  if(memberSection){
+    memberSection.style.display = '';
+    memberSection.style.maxHeight = '';
+    memberSection.style.overflow = '';
+    memberSection.style.opacity = '';
+  }
+
+  updateTodayMembersList();
+  logEvent('이전 단계로 돌아왔습니다. 멤버를 확인하고 다시 확정하세요!');
+}
+
+// ========== 팀 결성 완료 ==========
+function showTeamComplete(){
+  document.getElementById('draftArea').style.display = 'none';
+  document.getElementById('teamCompleteArea').style.display = '';
+
+  const renderFinalTeam = (arr, containerId) => {
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    arr.forEach(m => {
+      c.innerHTML += '<div class="team-slot filled">' +
+        '<img src="' + (m.img || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="slot-name">' + m.name + '</div>' +
+        '<div class="slot-role">' + (m.role === 'PICK' ? 'PICK' : m.role || 'PICK') + '</div></div></div>';
+    });
+  };
+  renderFinalTeam(teamA, 'finalTeamA');
+  renderFinalTeam(teamB, 'finalTeamB');
+
+  // 오늘의 대결멤버 축소
+  const memberSection = document.getElementById('memberSection');
+  if(memberSection){
+    memberSection.style.maxHeight = '200px';
+    memberSection.style.overflow = 'hidden';
+    memberSection.style.opacity = '0.6';
+    memberSection.style.transition = 'all .3s';
+  }
+
+  gameHistory.unshift({ timestamp: new Date().toISOString(), teamA: [...teamA], teamB: [...teamB] });
+  if(gameHistory.length > 50) gameHistory.pop();
+  localStorage.setItem('mk_ladder_history', JSON.stringify(gameHistory));
+  updateStats();
+
+  // 랜드/CK 모드: 진영 선택 표시 (랜덤은 자동 배정이므로 제외)
+  if(gameMode === 'land' && draftMethod !== 'random'){
+    const sideArea = document.getElementById('sideSelectArea');
+    const captA = teamA.length > 0 ? teamA[0].name : 'A';
+    const captB = teamB.length > 0 ? teamB[0].name : 'B';
+    sideArea.innerHTML =
+      '<div style="font-size:16px;font-weight:700;color:var(--green);margin-bottom:12px">🎮 진영 선택</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">' + captA + '팀의 진영을 선택하세요</div>' +
+      '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">' +
+        '<button onclick="directSideSelect(\'blue\')" class="game-btn" style="padding:16px 32px;background:var(--team-blue);color:#fff;font-size:16px;font-weight:900;border-radius:12px">🔵 ' + captA + '팀 = 블루</button>' +
+        '<button onclick="directSideSelect(\'red\')" class="game-btn" style="padding:16px 32px;background:var(--team-red);color:#fff;font-size:16px;font-weight:900;border-radius:12px">🔴 ' + captA + '팀 = 레드</button>' +
+        '<button onclick="startSideLadder()" class="game-btn secondary" style="padding:16px 24px;font-size:14px;font-weight:700;border-radius:12px">🪜 사다리로 결정</button>' +
+      '</div>';
+    sideArea.style.display = '';
+  }
+}
+
+// ========== 사다리 초기화 ==========
+function resetLadder(){
+  ladderPlayers = [null, null];
+  ladderRungs = [];
+  ladderAnimResults = null;
+  isLadderRunning = false;
+  skipAnimation = false;
+  bottomLabels = ['X', '선', '후'];
+  renderLadderSlots();
+  renderBottomLabels();
+  drawLadder();
+  checkLadderReady();
+  document.getElementById('ladderResult').style.display = 'none';
+  document.getElementById('runLadderBtn').disabled = true;
+  document.getElementById('showAllBtn').style.display = 'none';
+  logEvent('사다리가 초기화되었습니다.');
+}
+
+// ========== 전체 초기화 ==========
+function resetAll(){
+  document.getElementById('draftArea').style.display = 'none';
+  document.getElementById('teamCompleteArea').style.display = 'none';
+  document.getElementById('draftSection').style.display = 'none';
+  document.getElementById('ladderSetupArea').style.display = '';
+  document.getElementById('ladderSection').style.display = '';
+  document.getElementById('ladderResult').style.display = 'none';
+  document.getElementById('gameModeSelector').style.display = '';
+  document.getElementById('memberSection').style.display = 'none';
+  const runBtn = document.getElementById('runLadderBtn');
+  if(runBtn){ runBtn.style.display = ''; runBtn.disabled = true; }
+  const showAllBtn = document.getElementById('showAllBtn');
+  if(showAllBtn) showAllBtn.style.display = 'none';
+  const swapBtn = document.getElementById('swapLadderBtn');
+  if(swapBtn) swapBtn.style.display = 'none';
+
+  // 라인 모달 닫기
+  closeLineSelectModal();
+
+  gameMode = '';
+  ladderPlayers = [null, null];
+  ladderRungs = [];
+  ladderAnimResults = null;
+  isLadderRunning = false;
+  bottomLabels = ['X', '선', '후'];
+  captainFirst = null;
+  captainSecond = null;
+  teamA = [];
+  teamB = [];
+  draftPool = [];
+  draftStarted = false;
+  draftRound = 0;
+  draftInitialized = false;
+  firstPickId = '';
+  firstPickCount = 'always';
+  firstPickUsed = false;
+  membersConfirmed = false;
+  availableLines = [];
+  currentLine = null;
+  landSlots = [null,null,null,null,null,null,null,null,null,null];
+  activeSlotIdx = -1;
+  picksThisRound = 0;
+  matchedPairs.clear();
+  currentPickTeam = 'A';
+  teamSide = { A: 'blue', B: 'red' };
+  isSideLadder = false;
+  draftMethod = 'normal';
+  customPicker = null;
+  customPickTeam = 'A';
+  customSlots = [];
+  customStep = 0;
+  customCounterPicker = null;
+  usedRolesA = [];
+  usedRolesB = [];
+  pendingPickMember = null;
+  pendingPickResolve = null;
+
+  // 커스텀 / 모달 숨기기
+  document.getElementById('customDraftArea').style.display = 'none';
+  document.getElementById('roleSelectOverlay').classList.remove('active');
+  closeDraftMethodModal();
+  closeCustomPickerModal();
+  document.getElementById('diceOverlay').classList.remove('show');
+  const sideLadderArea2 = document.getElementById('sideLadderArea');
+  if(sideLadderArea2) sideLadderArea2.style.display = 'none';
+
+  // 진영 관련 UI 숨기기
+  const sideLadderBtn = document.getElementById('startSideLadderBtn');
+  if(sideLadderBtn) sideLadderBtn.style.display = 'none';
+  const sideSelectArea = document.getElementById('sideSelectArea');
+  if(sideSelectArea) sideSelectArea.style.display = 'none';
+
+  // 팀 이름 복원
+  const teamANameEl = document.getElementById('teamAName');
+  const teamBNameEl = document.getElementById('teamBName');
+  if(teamANameEl) teamANameEl.textContent = 'A팀';
+  if(teamBNameEl) teamBNameEl.textContent = 'B팀';
+  const teamAH = document.getElementById('teamAHeader');
+  const teamBH = document.getElementById('teamBHeader');
+  if(teamAH) teamAH.style.color = 'var(--team-blue)';
+  if(teamBH) teamBH.style.color = 'var(--team-red)';
+  const fAName = document.getElementById('finalTeamAName');
+  const fBName = document.getElementById('finalTeamBName');
+  if(fAName) fAName.textContent = 'A팀';
+  if(fBName) fBName.textContent = 'B팀';
+
+  // 멤버 섹션 복원 (축소 해제)
+  const memberSection2 = document.getElementById('memberSection');
+  if(memberSection2){
+    memberSection2.style.maxHeight = '';
+    memberSection2.style.overflow = '';
+    memberSection2.style.opacity = '';
+  }
+
+  renderLadderSlots();
+  renderBottomLabels();
+  checkLadderReady();
+  updateTodayMembersList();
+  logEvent('게임 모드를 선택해주세요.');
+}
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// ========== 이벤트 로그 ==========
+function logEvent(text){
+  const bar = document.getElementById('eventBar');
+  if(bar) bar.innerHTML = '<span class="event-icon">💡</span><span class="event-text">' + text + '</span>';
+}
+
+// ========== 통계 ==========
+function updateStats(){
+  // 상태 카드 제거됨
+}
+
+// ========== 오늘의 멤버 관리 ==========
+let memberSearchTimeout = null;
+let searchHighlightIdx = -1; // 검색 결과 방향키 하이라이트 인덱스
+
+async function searchStreamerForMember(input) {
+  // 테스트 모드: 서버 API 없이 직접 입력만
+  // 타이핑 후 Enter 또는 추가 버튼으로 등록
+  hideMemberSearchResults();
+}
+
+let searchByKeyboard = false; // 키보드로 탐색 중인지 여부
+
+function showMemberSearchResults(streamers) {
+  hideMemberSearchResults();
+  searchHighlightIdx = 0; // 첫 번째 결과 자동 하이라이트
+  searchByKeyboard = false;
+  const input = document.getElementById('newMemberInput');
+  const container = input.parentElement;
+  const resultsContainer = document.createElement('div');
+  resultsContainer.id = 'memberSearchResults';
+  resultsContainer.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:var(--card);border:2px solid var(--green);border-radius:8px;max-height:300px;overflow-y:auto;z-index:1000;box-shadow:0 8px 24px rgba(0,0,0,.15);margin-top:4px';
+
+  streamers.forEach((streamer, sIdx) => {
+    const item = document.createElement('div');
+    item.className = 'search-result-item';
+    item.dataset.idx = sIdx;
+    item.style.cssText = 'display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid rgba(74,222,128,0.1);transition:all .15s;border-radius:6px;margin:4px';
+    item.onmouseover = () => { if(!searchByKeyboard){ searchHighlightIdx = sIdx; updateSearchHighlight(); } };
+    item.onmouseout = () => { if(!searchByKeyboard && searchHighlightIdx === sIdx){ searchHighlightIdx = -1; updateSearchHighlight(); } };
+
+    const img = document.createElement('img');
+    img.src = streamer.profileImage || 'icon.png';
+    img.style.cssText = 'width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid var(--green)';
+    img.onerror = function(){ this.src='icon.png'; };
+
+    const info = document.createElement('div');
+    info.style.flex = '1';
+    info.innerHTML = '<div style="font-size:16px;font-weight:700">' + streamer.name + '</div><div style="font-size:12px;color:var(--muted)">@' + streamer.id + '</div>';
+
+    item.appendChild(img);
+    item.appendChild(info);
+    item.onclick = () => {
+      if(membersConfirmed){ alert('멤버가 확정된 상태입니다.'); return; }
+      const member = { id: streamer.id, name: streamer.name, profileImage: streamer.profileImage };
+      if(gameMode === 'land'){
+        if(landSlots.some(s => s && s.id === streamer.id)){ input.value = ''; hideMemberSearchResults(); return; }
+        const nextEmpty = landSlots.indexOf(null);
+        if(nextEmpty === -1){ alert('모든 슬롯이 채워져 있습니다.'); return; }
+        landSlots[nextEmpty] = member;
+        syncTodayMembersFromSlots();
+      } else {
+        if(todayMembers.find(m => m.id === streamer.id)){ input.value = ''; hideMemberSearchResults(); return; }
+        todayMembers.push(member);
+        saveTodayMembers();
+      }
+      updateTodayMembersList();
+      input.value = '';
+      hideMemberSearchResults();
+    };
+    resultsContainer.appendChild(item);
+  });
+
+  container.style.position = 'relative';
+  container.appendChild(resultsContainer);
+  updateSearchHighlight(); // 첫 번째 결과 자동 하이라이트
+}
+
+function hideMemberSearchResults() {
+  const existing = document.getElementById('memberSearchResults');
+  if(existing) existing.remove();
+  searchHighlightIdx = -1;
+  searchByKeyboard = false;
+}
+
+function updateSearchHighlight(){
+  const results = document.getElementById('memberSearchResults');
+  if(!results) return;
+  const items = results.querySelectorAll('.search-result-item');
+  items.forEach((item, i) => {
+    if(i === searchHighlightIdx){
+      item.style.background = 'rgba(74,222,128,0.15)';
+      item.style.borderColor = 'var(--green)';
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.style.background = 'transparent';
+      item.style.borderColor = 'transparent';
+    }
+  });
+}
+
+function addTodayMember() {
+  if(membersConfirmed){ alert('멤버가 확정된 상태입니다.'); return; }
+  const input = document.getElementById('newMemberInput');
+  const query = input.value.trim();
+  if(!query) return;
+
+  if(gameMode === 'land'){
+    const nextEmpty = landSlots.indexOf(null);
+    if(nextEmpty === -1){ alert('모든 슬롯이 채워져 있습니다.'); return; }
+    if(landSlots.some(s => s && s.name === query)) return;
+    landSlots[nextEmpty] = { id: query, name: query, profileImage: 'icon.png' };
+    syncTodayMembersFromSlots();
+    updateTodayMembersList();
+    input.value = '';
+  } else {
+    if(!todayMembers.find(m => m.name === query)){
+      todayMembers.push({ id: query, name: query, profileImage: 'icon.png' });
+      saveTodayMembers();
+      updateTodayMembersList();
+      input.value = '';
+    }
+  }
+}
+
+// 랜드 슬롯에 멤버 배치 (특정 슬롯 지정)
+function addMemberToSlot(slotIdx, member){
+  if(membersConfirmed) return;
+  if(landSlots[slotIdx]) return;
+  // 이미 다른 슬롯에 있으면 무시
+  if(landSlots.some(s => s && s.id === member.id)) return;
+  landSlots[slotIdx] = member;
+  syncTodayMembersFromSlots();
+  updateTodayMembersList();
+}
+
+function removeTodayMember(memberId) {
+  if(membersConfirmed) return;
+  if(matchedPairs.has(memberId)){
+    const partnerId = matchedPairs.get(memberId);
+    matchedPairs.delete(partnerId);
+    matchedPairs.delete(memberId);
+  }
+
+  if(gameMode === 'land'){
+    // 슬롯에서 해당 멤버만 null로
+    for(let i = 0; i < 10; i++){
+      if(landSlots[i] && landSlots[i].id === memberId){
+        landSlots[i] = null;
+        break;
+      }
+    }
+    syncTodayMembersFromSlots();
+  } else {
+    todayMembers = todayMembers.filter(m => m.id !== memberId);
+    saveTodayMembers();
+  }
+  if(gameMode === 'land') updateMatchPairs();
+  updateTodayMembersList();
+}
+
+function clearTodayMembers() {
+  if(membersConfirmed){
+    alert('멤버가 확정된 상태입니다. 새 드래프트를 시작하려면 초기화하세요.');
+    return;
+  }
+  if(confirm('모든 오늘 멤버를 삭제하시겠습니까?')){
+    todayMembers = [];
+    landSlots = [null,null,null,null,null,null,null,null,null,null];
+    saveTodayMembers();
+    updateTodayMembersList();
+  }
+}
+
+function fullReset(){
+  if(!confirm('전체 초기화하시겠습니까? 멤버, 드래프트 상태 모두 리셋됩니다.')) return;
+  todayMembers = [];
+  landSlots = [null,null,null,null,null,null,null,null,null,null];
+  matchedPairs.clear();
+  saveTodayMembers();
+  resetAll();
+}
+
+function saveTodayMembers() { localStorage.setItem('mk_today_members', JSON.stringify(todayMembers)); }
+
+// 드래그 상태
+let dragSrcIdx = null;
+
+// 슬롯 인라인 검색 상태
+let slotSearchTimeout = null;
+let activeSlotIdx = -1; // 현재 편집 중인 슬롯 인덱스
+
+function updateTodayMembersList() {
+  const container = document.getElementById('todayMembersList');
+  const confirmBtn = document.getElementById('confirmMembersBtn');
+
+  container.className = 'member-grid';
+  container.style.cssText = '';
+  container.innerHTML = '';
+
+  if(gameMode === 'land') updateMatchPairs();
+
+  // ====== 랜드/CK: 고정 5포지션 슬롯 (landSlots 기반) ======
+  if(gameMode === 'land'){
+    for(let posIdx = 0; posIdx < ROLES.length; posIdx++){
+      const role = ROLES[posIdx];
+      const row = document.createElement('div');
+      row.className = 'member-pair';
+
+      const label = document.createElement('div');
+      label.className = 'pair-label';
+      label.textContent = role.name;
+      row.appendChild(label);
+
+      row.appendChild(createLandSlot(posIdx * 2));
+
+      const vs = document.createElement('div');
+      vs.className = 'pair-vs';
+      vs.textContent = 'VS';
+      row.appendChild(vs);
+
+      row.appendChild(createLandSlot(posIdx * 2 + 1));
+
+      container.appendChild(row);
+    }
+
+    // 멤버확정: 페어가 최소 2쌍(4명) 이상 완성되어야
+    if(confirmBtn){
+      let completePairs = 0;
+      for(let i = 0; i < 10; i += 2){
+        if(landSlots[i] && landSlots[i+1]) completePairs++;
+      }
+      if(!membersConfirmed && completePairs >= 2){
+        confirmBtn.style.display = '';
+      } else {
+        confirmBtn.style.display = 'none';
+      }
+    }
+  } else {
+    // ====== 솔랭 모드 ======
+    if(todayMembers.length === 0){
+      container.innerHTML = '<div style="color:var(--muted);padding:20px;font-size:14px;text-align:center">등록된 멤버가 없습니다. 검색하여 추가하세요.</div>';
+      if(confirmBtn) confirmBtn.style.display = 'none';
+      return;
+    }
+    todayMembers.forEach((member, idx) => {
+      const card = createSoloCard(member, idx);
+      if(!membersConfirmed && idx % 2 === 0 && idx < todayMembers.length - 1){
+        const nextMember = todayMembers[idx + 1];
+        const isMatched = matchedPairs.get(member.id) === nextMember.id;
+        const matchCheck = document.createElement('div');
+        matchCheck.className = 'match-check';
+        matchCheck.innerHTML = '<input type="checkbox" ' + (isMatched ? 'checked' : '') +
+          ' onchange="event.stopPropagation();toggleManualMatch(\'' + member.id + '\', \'' + nextMember.id + '\', this.checked)">' +
+          '<span class="match-label">맞벨</span>';
+        card.appendChild(matchCheck);
+      }
+      container.appendChild(card);
+      if(idx % 2 === 1 && idx < todayMembers.length - 1){
+        const divider = document.createElement('div');
+        divider.className = 'member-pair-divider';
+        container.appendChild(divider);
+      }
+    });
+    if(confirmBtn){
+      if(!membersConfirmed && todayMembers.length >= 4 && todayMembers.length % 2 === 0){
+        confirmBtn.style.display = '';
+      } else {
+        confirmBtn.style.display = 'none';
+      }
+    }
+  }
+}
+
+// ====== 랜드 슬롯 생성 ======
+function createLandSlot(slotIdx){
+  const member = landSlots[slotIdx];
+  const slot = document.createElement('div');
+  slot.dataset.slotIdx = slotIdx;
+
+  if(member){
+    // --- 채워진 슬롯 ---
+    slot.className = 'member-slot filled';
+    slot.draggable = !membersConfirmed;
+
+    const img = document.createElement('img');
+    img.src = member.profileImage || 'icon.png';
+    img.alt = member.name;
+    img.onerror = function(){ this.src='icon.png'; };
+    slot.appendChild(img);
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    info.innerHTML = '<div class="name">' + member.name + '</div>';
+    slot.appendChild(info);
+
+    if(!membersConfirmed){
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove';
+      removeBtn.textContent = '\u2715';
+      removeBtn.onclick = (e) => { e.stopPropagation(); removeTodayMember(member.id); };
+      slot.appendChild(removeBtn);
+
+      // 드래그
+      slot.addEventListener('dragstart', (e) => {
+        dragSrcIdx = slotIdx;
+        slot.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      slot.addEventListener('dragend', () => {
+        slot.classList.remove('dragging');
+        document.querySelectorAll('.member-slot').forEach(c => c.classList.remove('drag-over'));
+        dragSrcIdx = null;
+      });
+    }
+  } else {
+    // --- 빈 슬롯: 클릭하면 인라인 검색 ---
+    slot.className = 'member-slot empty';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'slot-placeholder';
+    placeholder.textContent = '클릭하여 입력';
+    slot.appendChild(placeholder);
+
+    if(!membersConfirmed){
+      slot.addEventListener('click', () => {
+        if(activeSlotIdx === slotIdx) return; // 이미 편집 중
+        activateSlotInput(slot, slotIdx);
+      });
+    }
+  }
+
+  // 드롭 대상 (채워진/빈 슬롯 모두)
+  if(!membersConfirmed){
+    slot.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      slot.classList.add('drag-over');
+    });
+    slot.addEventListener('dragleave', () => { slot.classList.remove('drag-over'); });
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      const targetSlotIdx = parseInt(slot.dataset.slotIdx);
+      if(dragSrcIdx !== null && dragSrcIdx !== targetSlotIdx){
+        // landSlots 간 교환/이동
+        const temp = landSlots[targetSlotIdx];
+        landSlots[targetSlotIdx] = landSlots[dragSrcIdx];
+        landSlots[dragSrcIdx] = temp;
+        syncTodayMembersFromSlots();
+        updateTodayMembersList();
+      }
+    });
+  }
+
+  return slot;
+}
+
+// ====== 빈 슬롯 → 인라인 입력 활성화 ======
+function activateSlotInput(slot, slotIdx){
+  activeSlotIdx = slotIdx;
+  slot.className = 'member-slot editing';
+  slot.innerHTML = '';
+
+  const input = document.createElement('input');
+  input.className = 'slot-input';
+  input.placeholder = '스트리머 이름 입력...';
+  input.type = 'text';
+  slot.appendChild(input);
+
+  let slotHighlightIdx = -1;
+  let slotResults = null;
+
+  setTimeout(() => input.focus(), 50);
+
+  input.addEventListener('input', () => {
+    // 테스트 모드: 서버 검색 없이 직접 입력 → Enter로 등록
+    hideSlotResults();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      if(slotResults){
+        const items = slotResults.querySelectorAll('.slot-search-item');
+        slotHighlightIdx = Math.min(slotHighlightIdx + 1, items.length - 1);
+        updateSlotHighlight(items);
+      }
+    } else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(slotResults){
+        const items = slotResults.querySelectorAll('.slot-search-item');
+        slotHighlightIdx = Math.max(slotHighlightIdx - 1, -1);
+        updateSlotHighlight(items);
+      }
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      if(slotResults && slotHighlightIdx >= 0){
+        const items = slotResults.querySelectorAll('.slot-search-item');
+        if(items[slotHighlightIdx]) items[slotHighlightIdx].click();
+      } else if(input.value.trim()){
+        // 직접 이름 입력
+        const name = input.value.trim();
+        if(!landSlots.some(s => s && s.name === name)){
+          landSlots[slotIdx] = { id: name, name: name, profileImage: 'icon.png' };
+          syncTodayMembersFromSlots();
+          activeSlotIdx = -1;
+          updateTodayMembersList();
+        }
+      }
+    } else if(e.key === 'Escape'){
+      activeSlotIdx = -1;
+      updateTodayMembersList();
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    // 클릭 이벤트가 먹히도록 약간 딜레이
+    setTimeout(() => {
+      if(activeSlotIdx === slotIdx){
+        activeSlotIdx = -1;
+        updateTodayMembersList();
+      }
+    }, 200);
+  });
+
+  function showSlotResults(streamers){
+    hideSlotResults();
+    slotHighlightIdx = 0; // 첫 번째 자동 하이라이트
+    slotResults = document.createElement('div');
+    slotResults.className = 'slot-search-results';
+    streamers.forEach((streamer, sIdx) => {
+      const item = document.createElement('div');
+      item.className = 'slot-search-item' + (sIdx === 0 ? ' highlighted' : '');
+      item.innerHTML = '<img src="' + (streamer.profileImage || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="si-name">' + streamer.name + '</div><div class="si-id">@' + streamer.id + '</div></div>';
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        if(landSlots.some(s => s && s.id === streamer.id)) return;
+        landSlots[slotIdx] = { id: streamer.id, name: streamer.name, profileImage: streamer.profileImage };
+        syncTodayMembersFromSlots();
+        activeSlotIdx = -1;
+        updateTodayMembersList();
+      });
+      slotResults.appendChild(item);
+    });
+    slot.appendChild(slotResults);
+  }
+
+  function hideSlotResults(){
+    if(slotResults){ slotResults.remove(); slotResults = null; }
+    slotHighlightIdx = -1;
+  }
+
+  function updateSlotHighlight(items){
+    items.forEach((item, i) => {
+      item.classList.toggle('highlighted', i === slotHighlightIdx);
+      if(i === slotHighlightIdx) item.scrollIntoView({ block: 'nearest' });
+    });
+  }
+}
+
+// ====== 솔랭 카드 생성 ======
+function createSoloCard(member, idx){
+  const card = document.createElement('div');
+  card.className = 'member-card' + (membersConfirmed ? ' locked' : '');
+  card.draggable = !membersConfirmed;
+  card.dataset.idx = idx;
+
+  const img = document.createElement('img');
+  img.src = member.profileImage || 'icon.png';
+  img.alt = member.name;
+  img.onerror = function(){ this.src='icon.png'; };
+  card.appendChild(img);
+
+  const info = document.createElement('div');
+  info.className = 'info';
+  info.innerHTML = '<div class="name">' + member.name + '</div>';
+  card.appendChild(info);
+
+  if(!membersConfirmed){
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove';
+    removeBtn.textContent = '\u2715';
+    removeBtn.onclick = (e) => { e.stopPropagation(); removeTodayMember(member.id); };
+    card.appendChild(removeBtn);
+
+    card.addEventListener('dragstart', (e) => {
+      dragSrcIdx = idx;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.member-card').forEach(c => c.classList.remove('drag-over'));
+      dragSrcIdx = null;
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => { card.classList.remove('drag-over'); });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const targetIdx = parseInt(card.dataset.idx);
+      if(dragSrcIdx !== null && dragSrcIdx !== targetIdx){
+        const moved = todayMembers.splice(dragSrcIdx, 1)[0];
+        todayMembers.splice(targetIdx, 0, moved);
+        saveTodayMembers();
+        updateTodayMembersList();
+      }
+    });
+  }
+  return card;
+}
+
+// ========== 멤버확정 ==========
+function confirmMembers(){
+  if(gameMode === 'land'){
+    // 랜드: 완성된 페어만 사용
+    let pairs = [];
+    for(let i = 0; i < 10; i += 2){
+      if(landSlots[i] && landSlots[i+1]){
+        pairs.push({ a: landSlots[i], b: landSlots[i+1] });
+      }
+    }
+    if(pairs.length < 2){
+      alert('최소 2개 포지션(4명)이 완성되어야 합니다.');
+      return;
+    }
+    membersConfirmed = true;
+    // todayMembers 동기화 (완성된 페어만 순서대로)
+    todayMembers = [];
+    pairs.forEach(p => { todayMembers.push(p.a); todayMembers.push(p.b); });
+    saveTodayMembers();
+    availableLines = pairs.map((p, i) => ({ idx: i, a: p.a, b: p.b, drafted: false }));
+  } else {
+    if(todayMembers.length < 4 || todayMembers.length % 2 !== 0){
+      alert('짝수(4명 이상)의 멤버가 필요합니다.');
+      return;
+    }
+    membersConfirmed = true;
+    availableLines = [];
+    for(let i = 0; i < todayMembers.length; i += 2){
+      availableLines.push({ idx: i / 2, a: todayMembers[i], b: todayMembers[i + 1], drafted: false });
+    }
+  }
+
+  updateTodayMembersList();
+
+  if(gameMode === 'solo'){
+    // 솔랭내기: 라인 선택 없이 순서대로 사다리
+    draftMethod = 'normal';
+    logEvent('멤버가 확정되었습니다. 첫 번째 페어 사다리를 시작합니다!');
+    startNextSoloLadder();
+  } else {
+    // 랜드/CK: 일반/랜덤/커스텀 선택
+    openDraftMethodModal();
+    logEvent('멤버가 확정되었습니다. 팀 뽑기 방식을 선택하세요!');
+  }
+}
+
+// ========== 라인 선택 모달 ==========
+function openLineSelectModal(){
+  const overlay = document.getElementById('lineSelectOverlay');
+  const options = document.getElementById('lineSelectOptions');
+  const fpArea = document.getElementById('lineFirstPickArea');
+  const confirmBtn = document.getElementById('lineConfirmBtn');
+
+  options.innerHTML = '';
+  currentLine = null;
+  fpArea.style.display = 'none';
+  confirmBtn.style.display = 'none';
+
+  document.getElementById('lineSelectTitle').textContent =
+    draftRound === 0 ? '드래프트 할 라인을 선택하세요' : '라운드 ' + (draftRound + 1) + ': 라인을 선택하세요';
+
+  availableLines.forEach((line, i) => {
+    const opt = document.createElement('div');
+    opt.className = 'line-option' + (line.drafted ? ' done' : '');
+    opt.dataset.lineIdx = i;
+
+    let imgA = line.a.profileImage || 'icon.png';
+    if(imgA && !imgA.startsWith('http') && imgA !== 'icon.png') imgA = 'https://res.sooplive.co.kr' + imgA;
+    let imgB = line.b.profileImage || 'icon.png';
+    if(imgB && !imgB.startsWith('http') && imgB !== 'icon.png') imgB = 'https://res.sooplive.co.kr' + imgB;
+
+    const labelA = String.fromCharCode(65 + line.idx * 2);
+    const labelB = String.fromCharCode(66 + line.idx * 2);
+
+    opt.innerHTML =
+      '<img src="' + imgA + '" onerror="this.src=\'icon.png\'">' +
+      '<span class="line-vs">VS</span>' +
+      '<img src="' + imgB + '" onerror="this.src=\'icon.png\'">' +
+      '<div style="margin-left:8px"><div class="line-label">' + line.a.name + ' vs ' + line.b.name + '</div>' +
+      '<div style="font-size:11px;color:var(--muted)">' + labelA + ', ' + labelB + ' 라인' + (line.drafted ? ' (완료)' : '') + '</div></div>';
+
+    if(!line.drafted){
+      opt.onclick = () => selectLine(i);
+    }
+    options.appendChild(opt);
+  });
+
+  overlay.classList.add('active');
+}
+
+function selectLine(lineIdx){
+  // 선택 표시
+  document.querySelectorAll('#lineSelectOptions .line-option').forEach(o => o.classList.remove('selected'));
+  const opt = document.querySelector('#lineSelectOptions .line-option[data-line-idx="' + lineIdx + '"]');
+  if(opt) opt.classList.add('selected');
+
+  currentLine = availableLines[lineIdx];
+
+  // 선픽권 설정 표시
+  const fpArea = document.getElementById('lineFirstPickArea');
+  fpArea.style.display = '';
+
+  const sel = document.getElementById('lineFirstPickSelect');
+  sel.innerHTML = '<option value="">없음 (사다리로 결정)</option>';
+  sel.innerHTML += '<option value="' + currentLine.a.id + '">' + currentLine.a.name + '</option>';
+  sel.innerHTML += '<option value="' + currentLine.b.id + '">' + currentLine.b.name + '</option>';
+
+  document.getElementById('lineConfirmBtn').style.display = '';
+}
+
+function confirmLineSelection(){
+  if(!currentLine) return;
+
+  currentLine.drafted = true;
+
+  // 선픽권 설정
+  firstPickId = document.getElementById('lineFirstPickSelect')?.value || '';
+  firstPickCount = document.getElementById('lineFirstPickCountSelect')?.value || 'always';
+  firstPickUsed = false;
+
+  closeLineSelectModal();
+
+  if(firstPickId){
+    // 선픽권 있음 → 사다리 생략, 바로 픽
+    skipLadderAndStartDraft();
+  } else {
+    // 선픽권 없음 → 사다리 타기
+    goToLadderFromLine();
+  }
+}
+
+function closeLineSelectModal(){
+  document.getElementById('lineSelectOverlay').classList.remove('active');
+  // 아직 드래프트 시작 안 했으면 확정 해제
+  if(teamA.length === 0 && teamB.length === 0){
+    membersConfirmed = false;
+    updateTodayMembersList();
+  }
+}
+
+// ========== 선픽권 → 사다리 생략, 바로 드래프트 ==========
+function skipLadderAndStartDraft(){
+  const memberA = currentLine.a;
+  const memberB = currentLine.b;
+
+  let imgA = memberA.profileImage || 'icon.png';
+  if(imgA && !imgA.startsWith('http') && imgA !== 'icon.png') imgA = 'https://res.sooplive.co.kr' + imgA;
+  let imgB = memberB.profileImage || 'icon.png';
+  if(imgB && !imgB.startsWith('http') && imgB !== 'icon.png') imgB = 'https://res.sooplive.co.kr' + imgB;
+
+  // 사다리 참가자도 세팅 (선픽권 만료 후 사다리 복귀 시 필요)
+  ladderPlayers[0] = { name: memberA.name, id: memberA.id, img: imgA };
+  ladderPlayers[1] = { name: memberB.name, id: memberB.id, img: imgB };
+
+  // 선픽권자 = captainFirst (선)
+  if(firstPickId === memberA.id){
+    captainFirst = { name: memberA.name, id: memberA.id, img: imgA };
+    captainSecond = { name: memberB.name, id: memberB.id, img: imgB };
+  } else {
+    captainFirst = { name: memberB.name, id: memberB.id, img: imgB };
+    captainSecond = { name: memberA.name, id: memberA.id, img: imgA };
+  }
+
+  // draftArea 표시, 사다리 숨기기
+  document.getElementById('draftArea').style.display = '';
+  document.getElementById('ladderSetupArea').style.display = 'none';
+  document.getElementById('ladderSection').style.display = 'none';
+  document.getElementById('ladderResult').style.display = 'none';
+  document.getElementById('runLadderBtn').style.display = 'none';
+  document.getElementById('showAllBtn').style.display = 'none';
+
+  logEvent('선픽권: ' + captainFirst.name + '이(가) 먼저 뽑습니다! (사다리 생략)');
+  startDraft();
+}
+
+// ========== 팀뽑기로 이동 (라인 기반) ==========
+function autoSelectFirstLine(){
+  const firstLine = availableLines.find(l => !l.drafted);
+  if(!firstLine){
+    showTeamComplete();
+    return;
+  }
+  currentLine = firstLine;
+  currentLine.drafted = true;
+  firstPickId = '';
+  firstPickCount = 'always';
+  firstPickUsed = false;
+  goToLadderFromLine();
+}
+
+function goToLadderFromLine(){
+  const m0 = currentLine.a;
+  const m1 = currentLine.b;
+
+  let img0 = m0.profileImage || 'icon.png';
+  if(img0 && !img0.startsWith('http') && img0 !== 'icon.png') img0 = 'https://res.sooplive.co.kr' + img0;
+  let img1 = m1.profileImage || 'icon.png';
+  if(img1 && !img1.startsWith('http') && img1 !== 'icon.png') img1 = 'https://res.sooplive.co.kr' + img1;
+
+  ladderPlayers[0] = { name: m0.name, id: m0.id, img: img0 };
+  ladderPlayers[1] = { name: m1.name, id: m1.id, img: img1 };
+
+  document.getElementById('draftArea').style.display = '';
+  document.getElementById('ladderSetupArea').style.display = '';
+  document.getElementById('ladderSection').style.display = '';
+  // 스왑 버튼 표시
+  const swapBtn = document.getElementById('swapLadderBtn');
+  if(swapBtn) swapBtn.style.display = '';
+
+  renderLadderSlots();
+  drawLadder();
+  checkLadderReady();
+  logEvent(m0.name + ' vs ' + m1.name + ' 사다리! ▶ 사다리 시작을 눌러주세요!');
+}
+
+// ========== 사다리 자리 교환 ==========
+function swapLadderPlayers(){
+  if(isLadderRunning) return;
+  if(!ladderPlayers[0] || !ladderPlayers[1]) return;
+  [ladderPlayers[0], ladderPlayers[1]] = [ladderPlayers[1], ladderPlayers[0]];
+  renderLadderSlots();
+  drawLadder();
+  logEvent('자리가 교환되었습니다: ' + ladderPlayers[0].name + ' ↔ ' + ladderPlayers[1].name);
+}
+
+// ========== 진영 결정 사다리 (랜드/CK) ==========
+function startSideLadder(){
+  isSideLadder = true;
+  document.getElementById('startSideLadderBtn').style.display = 'none';
+  document.getElementById('sideSelectArea').style.display = 'none';
+
+  // A팀장과 B팀장을 사다리에 배치
+  ladderPlayers[0] = { name: teamA[0].name, id: teamA[0].id, img: teamA[0].img };
+  ladderPlayers[1] = { name: teamB[0].name, id: teamB[0].id, img: teamB[0].img };
+
+  // 하단 라벨: X, 🔵블루, 🔴레드
+  bottomLabels = ['X', '🔵', '🔴'];
+  ladderRungs = [];
+  rungCount = 0; // drawLadder에서 자동 생성됨
+  ladderAnimResults = null;
+  isLadderRunning = false;
+  skipAnimation = false;
+
+  // 사다리 영역 표시
+  document.getElementById('draftArea').style.display = '';
+  document.getElementById('ladderSetupArea').style.display = 'none';
+  document.getElementById('ladderSection').style.display = '';
+  document.getElementById('ladderResult').style.display = 'none';
+  document.getElementById('draftSection').style.display = 'none';
+  const runBtn = document.getElementById('runLadderBtn');
+  runBtn.style.display = '';
+  runBtn.disabled = false;
+  const swapBtn = document.getElementById('swapLadderBtn');
+  if(swapBtn) swapBtn.style.display = '';
+
+  renderLadderSlots();
+  renderBottomLabels();
+  drawLadder();
+  logEvent('진영 결정 사다리! ' + teamA[0].name + ' vs ' + teamB[0].name + ' — ▶ 사다리 시작을 눌러주세요!');
+}
+
+function applyTeamColors(){
+  const aIsBlue = teamSide.A === 'blue';
+  const aColor = aIsBlue ? 'var(--team-blue)' : 'var(--team-red)';
+  const bColor = aIsBlue ? 'var(--team-red)' : 'var(--team-blue)';
+  const aName = aIsBlue ? '블루팀' : '레드팀';
+  const bName = aIsBlue ? '레드팀' : '블루팀';
+
+  // 드래프트 헤더
+  const teamANameEl = document.getElementById('teamAName');
+  const teamBNameEl = document.getElementById('teamBName');
+  if(teamANameEl) teamANameEl.textContent = aName;
+  if(teamBNameEl) teamBNameEl.textContent = bName;
+  const teamAH = document.getElementById('teamAHeader');
+  const teamBH = document.getElementById('teamBHeader');
+  if(teamAH) teamAH.style.color = aColor;
+  if(teamBH) teamBH.style.color = bColor;
+
+  // 최종 결과 헤더
+  const fAName = document.getElementById('finalTeamAName');
+  const fBName = document.getElementById('finalTeamBName');
+  if(fAName) fAName.textContent = aName;
+  if(fBName) fBName.textContent = bName;
+  const fAH = document.getElementById('finalTeamAHeader');
+  const fBH = document.getElementById('finalTeamBHeader');
+  if(fAH) fAH.style.color = aColor;
+  if(fBH) fBH.style.color = bColor;
+
+  // 부제목
+  const sub = document.getElementById('teamCompleteSubtitle');
+  if(sub) sub.textContent = aName + ' vs ' + bName + ' 팀 편성 완료!';
+}
+
+// ========== 직접 진영 선택 ==========
+function directSideSelect(side){
+  if(side === 'blue'){
+    teamSide = { A: 'blue', B: 'red' };
+  } else {
+    teamSide = { A: 'red', B: 'blue' };
+  }
+  document.getElementById('sideSelectArea').style.display = 'none';
+  applyTeamColors();
+
+  // 최종 팀 다시 렌더링 (색상 반영)
+  const renderFinalTeam = (arr, containerId) => {
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    arr.forEach(m => {
+      c.innerHTML += '<div class="team-slot filled">' +
+        '<img src="' + (m.img || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="slot-name">' + m.name + '</div>' +
+        '<div class="slot-role">' + (m.role === 'PICK' ? 'PICK' : m.role || 'PICK') + '</div></div></div>';
+    });
+  };
+  renderFinalTeam(teamA, 'finalTeamA');
+  renderFinalTeam(teamB, 'finalTeamB');
+
+  const aIsBlue = teamSide.A === 'blue';
+  const aName = aIsBlue ? '블루팀' : '레드팀';
+  const bName = aIsBlue ? '레드팀' : '블루팀';
+  logEvent('진영 선택! ' + teamA[0].name + '팀 = ' + aName + ', ' + teamB[0].name + '팀 = ' + bName);
+}
+
+// ========== 픽 애니메이션 ==========
+function showPickAnimation(member, teamLabel, teamColor){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('pickAnimOverlay');
+    const card = document.getElementById('pickAnimCard');
+    const img = document.getElementById('pickAnimImg');
+    const name = document.getElementById('pickAnimName');
+    const team = document.getElementById('pickAnimTeam');
+
+    img.src = member.img || 'icon.png';
+    img.onerror = function(){ this.src = 'icon.png'; };
+    name.textContent = member.name;
+    team.textContent = teamLabel + ' 합류!';
+    team.style.color = teamColor;
+
+    card.className = 'pick-anim-card';
+    if(teamColor.includes('blue')) card.classList.add('blue');
+    else if(teamColor.includes('red')) card.classList.add('red');
+
+    overlay.classList.add('show');
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      setTimeout(resolve, 200);
+    }, 1000);
+  });
+}
+
+// ========== 드래프트 방식 선택 ==========
+function openDraftMethodModal(){
+  document.getElementById('draftMethodOverlay').classList.add('active');
+}
+function closeDraftMethodModal(){
+  document.getElementById('draftMethodOverlay').classList.remove('active');
+  // 아직 드래프트 시작 안 했으면 확정 해제
+  if(teamA.length === 0 && teamB.length === 0){
+    membersConfirmed = false;
+    updateTodayMembersList();
+  }
+}
+function selectDraftMethod(method){
+  draftMethod = method;
+  closeDraftMethodModal();
+  if(method === 'normal'){
+    // 첫 번째 라인 자동 선택 → 사다리로 이동
+    autoSelectFirstLine();
+  } else if(method === 'random'){
+    startRandomTeamDraft();
+  } else if(method === 'custom'){
+    openCustomPickerModal();
+  }
+}
+
+// ========== 랜덤 팀뽑기 ==========
+async function startRandomTeamDraft(){
+  const diceOverlay = document.getElementById('diceOverlay');
+  const diceContainer = document.getElementById('diceContainer');
+  const diceResultText = document.getElementById('diceResultText');
+  const randomAssignArea = document.getElementById('randomAssignArea');
+
+  diceContainer.innerHTML = '';
+  diceResultText.textContent = '';
+  diceResultText.style.animation = 'none';
+  randomAssignArea.innerHTML = '';
+  diceOverlay.classList.add('show');
+
+  // 주사위 굴리기 애니메이션
+  const diceEmojis = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+  const rollInterval = setInterval(() => {
+    diceContainer.innerHTML = diceEmojis[Math.floor(Math.random() * 6)];
+  }, 100);
+
+  await sleep(2000);
+  clearInterval(rollInterval);
+
+  const finalDice = Math.floor(Math.random() * 6);
+  diceContainer.innerHTML = diceEmojis[finalDice];
+  diceContainer.style.animation = 'none';
+  void diceContainer.offsetWidth;
+  diceContainer.style.animation = '';
+
+  // 포지션 목록 (5인 기준)
+  const roles = ['탑', '정글', '미드', '원딜', '서폿'];
+
+  // 라인(쌍) 단위로 셔플 — A/B, C/D 묶음 유지
+  const lines = [];
+  for(let i = 0; i < todayMembers.length; i += 2){
+    lines.push({ a: todayMembers[i], b: todayMembers[i + 1] });
+  }
+  // 라인 순서 셔플
+  for(let i = lines.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [lines[i], lines[j]] = [lines[j], lines[i]];
+  }
+
+  // 각 라인에서 랜덤으로 A팀/B팀 배정 (한 쌍의 두 명이 각 팀으로 갈림)
+  teamA = [];
+  teamB = [];
+
+  diceResultText.textContent = '포지션 배정 중...';
+  diceResultText.style.animation = 'none';
+  void diceResultText.offsetWidth;
+  diceResultText.style.animation = 'fadeInUp .5s forwards';
+
+  await sleep(800);
+
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    const role = i < roles.length ? roles[i] : 'PICK';
+    const aGoesA = Math.random() < 0.5; // 라인의 a멤버가 A팀인지 B팀인지 랜덤
+
+    const m1 = aGoesA ? line.a : line.b; // A팀 멤버
+    const m2 = aGoesA ? line.b : line.a; // B팀 멤버
+
+    let img1 = m1.profileImage || 'icon.png';
+    if(img1 && !img1.startsWith('http') && img1 !== 'icon.png') img1 = 'https://res.sooplive.co.kr' + img1;
+    let img2 = m2.profileImage || 'icon.png';
+    if(img2 && !img2.startsWith('http') && img2 !== 'icon.png') img2 = 'https://res.sooplive.co.kr' + img2;
+
+    teamA.push({ name: m1.name, id: m1.id, img: img1, role: role });
+    teamB.push({ name: m2.name, id: m2.id, img: img2, role: role });
+
+    // 카드: 포지션 | A팀 멤버 | VS | B팀 멤버
+    const card = document.createElement('div');
+    card.className = 'random-assign-card';
+    card.innerHTML =
+      '<div class="ra-role">' + role + '</div>' +
+      '<div class="ra-member team-a">' +
+        '<img src="' + img1 + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="ra-name">' + m1.name + '</div><div class="ra-team">A팀</div></div>' +
+      '</div>' +
+      '<div class="ra-vs">VS</div>' +
+      '<div class="ra-member team-b">' +
+        '<img src="' + img2 + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="ra-name">' + m2.name + '</div><div class="ra-team">B팀</div></div>' +
+      '</div>';
+    randomAssignArea.appendChild(card);
+
+    await sleep(500);
+    card.classList.add('show');
+  }
+
+  diceResultText.textContent = '팀 & 포지션 배정 완료!';
+  diceResultText.style.animation = 'none';
+  void diceResultText.offsetWidth;
+  diceResultText.style.animation = 'fadeInUp .5s forwards';
+
+  await sleep(1500);
+  diceOverlay.classList.remove('show');
+
+  await sleep(300);
+
+  // 랜덤은 자동으로 A=블루, B=레드 진영 배정
+  teamSide = { A: 'blue', B: 'red' };
+  showTeamComplete();
+  applyTeamColors();
+}
+
+// ========== 커스텀 — 픽커 선택 ==========
+function openCustomPickerModal(){
+  const overlay = document.getElementById('customPickerOverlay');
+  const options = document.getElementById('customPickerOptions');
+  options.innerHTML = '';
+
+  todayMembers.forEach(m => {
+    let imgUrl = m.profileImage || 'icon.png';
+    if(imgUrl && !imgUrl.startsWith('http') && imgUrl !== 'icon.png') imgUrl = 'https://res.sooplive.co.kr' + imgUrl;
+
+    const opt = document.createElement('div');
+    opt.className = 'pick-option';
+    opt.innerHTML = '<img src="' + imgUrl + '" onerror="this.src=\'icon.png\'">' +
+      '<div><div class="pick-name">' + m.name + '</div><div class="pick-id">@' + m.id + '</div></div>';
+    opt.onclick = () => selectCustomPicker(m);
+    options.appendChild(opt);
+  });
+
+  overlay.classList.add('active');
+}
+function closeCustomPickerModal(){
+  document.getElementById('customPickerOverlay').classList.remove('active');
+}
+function selectCustomPicker(member){
+  customPicker = member;
+  closeCustomPickerModal();
+  showCustomSettings();
+}
+
+// ========== 커스텀 — 설정 화면 ==========
+let customSlots = []; // [{label, type:'pick'|'counter'|'ladder'}]
+
+function showCustomSettings(){
+  // 라인(쌍) 수 = 선수 슬롯 수, + 진영선택권 (랜드/CK만)
+  const otherLines = availableLines.filter(l => l.a.id !== customPicker.id && l.b.id !== customPicker.id);
+  const pairCount = otherLines.length; // 커스텀 픽커 본인 라인 제외
+  customSlots = [];
+  for(let i = 0; i < pairCount; i++){
+    customSlots.push({ label: '선수 ' + (i + 1), type: 'pick' });
+  }
+  if(gameMode === 'land'){
+    customSlots.push({ label: '진영선택권', type: 'pick', isSide: true });
+  }
+
+  document.getElementById('customPickerName').textContent = customPicker.name;
+  document.getElementById('customDraftSubtitle').textContent = '각 슬롯의 선택 방식을 정하세요';
+
+  document.getElementById('memberSection').style.maxHeight = '200px';
+  document.getElementById('memberSection').style.overflow = 'hidden';
+  document.getElementById('memberSection').style.opacity = '0.6';
+  document.getElementById('memberSection').style.transition = 'all .3s';
+
+  document.getElementById('customDraftArea').style.display = '';
+  renderCustomSlotSettings();
+  logEvent('👑 ' + customPicker.name + ' 커스텀! 각 슬롯의 선/후/사다리를 설정하세요.');
+}
+
+function renderCustomSlotSettings(){
+  const container = document.getElementById('customSlotSettings');
+  container.innerHTML = '';
+  const pickerName = customPicker.name;
+  const pickerPartnerId = matchedPairs.get(customPicker.id);
+  const pickerPartner = pickerPartnerId ? todayMembers.find(m => m.id === pickerPartnerId) : null;
+  const counterName = pickerPartner ? pickerPartner.name : '상대';
+
+  customSlots.forEach((slot, i) => {
+    const row = document.createElement('div');
+    row.className = 'custom-slot-row';
+    row.innerHTML =
+      '<div class="cs-label' + (slot.isSide ? ' side' : '') + '">' + (slot.isSide ? '🎮 ' : '') + slot.label + '</div>' +
+      '<div class="custom-slot-btns">' +
+        '<button data-slot="' + i + '" data-type="pick" class="' + (slot.type === 'pick' ? 'active-pick' : '') + '" onclick="setCustomSlot(' + i + ',\'pick\')">' + pickerName + ' (선)</button>' +
+        '<button data-slot="' + i + '" data-type="counter" class="' + (slot.type === 'counter' ? 'active-counter' : '') + '" onclick="setCustomSlot(' + i + ',\'counter\')">' + counterName + ' (후)</button>' +
+        (slot.isSide ? '' : '<button data-slot="' + i + '" data-type="ladder" class="' + (slot.type === 'ladder' ? 'active-ladder' : '') + '" onclick="setCustomSlot(' + i + ',\'ladder\')">🪜 사다리</button>') +
+      '</div>';
+    container.appendChild(row);
+  });
+}
+
+function setCustomSlot(idx, type){
+  customSlots[idx].type = type;
+  // 사다리 선택 시 다음 슬롯도 자동으로 사다리 (선/후 각 1명 = 2슬롯 소비)
+  if(type === 'ladder' && idx + 1 < customSlots.length && !customSlots[idx + 1].isSide){
+    customSlots[idx + 1].type = 'ladder';
+  }
+  renderCustomSlotSettings();
+}
+
+function setAllCustomSlots(type){
+  customSlots.forEach(s => { s.type = type; });
+  renderCustomSlotSettings();
+}
+
+// ========== 커스텀 — 드래프트 실행 ==========
+let customStep = 0; // 현재 진행 중인 커스텀 슬롯 인덱스
+let customCounterPicker = null; // 커스텀 상대 (후 선택자)
+
+async function confirmCustomSettings(){
+  document.getElementById('customDraftArea').style.display = 'none';
+
+  // 팀 초기화
+  let pickerImg = customPicker.profileImage || 'icon.png';
+  if(pickerImg && !pickerImg.startsWith('http') && pickerImg !== 'icon.png') pickerImg = 'https://res.sooplive.co.kr' + pickerImg;
+
+  // 커스텀 픽커 포지션 선택
+  currentPickTeam = 'A';
+  const pickerRole = await selectRole(customPicker);
+  usedRolesA.push(pickerRole.key);
+
+  teamA = [{ name: customPicker.name, id: customPicker.id, img: pickerImg, role: pickerRole.icon + ' ' + pickerRole.name }];
+  teamB = [];
+
+  // 커스텀 픽커의 맞벨 파트너 → B팀 (같은 포지션)
+  const pickerPartnerId = matchedPairs.get(customPicker.id);
+  if(pickerPartnerId){
+    const partner = todayMembers.find(m => m.id === pickerPartnerId);
+    if(partner){
+      let pImg = partner.profileImage || 'icon.png';
+      if(pImg && !pImg.startsWith('http') && pImg !== 'icon.png') pImg = 'https://res.sooplive.co.kr' + pImg;
+      teamB.push({ name: partner.name, id: partner.id, img: pImg, role: pickerRole.icon + ' ' + pickerRole.name });
+      usedRolesB.push(pickerRole.key);
+      customCounterPicker = partner;
+    }
+  }
+
+  // 나머지 라인에서 드래프트 풀 생성 (커스텀 픽커 라인 제외)
+  draftPool = todayMembers.filter(m => m.id !== customPicker.id && m.id !== (pickerPartnerId || ''));
+
+  customStep = 0;
+  draftRound = 0;
+  draftInitialized = true;
+  captainFirst = { name: customPicker.name, id: customPicker.id, img: pickerImg };
+  captainSecond = customCounterPicker ? { name: customCounterPicker.name, id: customCounterPicker.id, img: customCounterPicker.profileImage || 'icon.png' } : null;
+
+  // 기존 드래프트 UI 사용
+  document.getElementById('draftArea').style.display = '';
+  document.getElementById('ladderSetupArea').style.display = 'none';
+  document.getElementById('ladderSection').style.display = 'none';
+  document.getElementById('draftSection').style.display = 'none';
+  document.getElementById('ladderResult').style.display = 'none';
+
+  processNextCustomStep();
+}
+
+async function processNextCustomStep(){
+  if(customStep >= customSlots.length){
+    // 모든 슬롯 완료, 진영 처리 제외 (별도)
+    setTimeout(() => showTeamComplete(), 500);
+    return;
+  }
+
+  const slot = customSlots[customStep];
+
+  // 진영선택권 슬롯
+  if(slot.isSide){
+    customStep++;
+    if(slot.type === 'pick'){
+      // 커스텀 픽커가 직접 선택
+      showTeamComplete();
+      setTimeout(() => {
+        document.getElementById('startSideLadderBtn').style.display = 'none';
+        const sideArea = document.getElementById('sideLadderArea');
+        sideArea.style.display = '';
+        sideArea.innerHTML =
+          '<div style="font-size:16px;font-weight:700;color:var(--yellow);margin-bottom:12px">👑 ' + customPicker.name + ' 진영 선택</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">' + customPicker.name + '님이 진영을 직접 선택합니다!</div>' +
+          '<div style="display:flex;gap:16px;justify-content:center">' +
+            '<button onclick="customSideSelect(\'blue\')" class="game-btn" style="padding:16px 32px;background:var(--team-blue);color:#fff;font-size:16px;font-weight:900;border-radius:12px">🔵 블루 진영</button>' +
+            '<button onclick="customSideSelect(\'red\')" class="game-btn" style="padding:16px 32px;background:var(--team-red);color:#fff;font-size:16px;font-weight:900;border-radius:12px">🔴 레드 진영</button>' +
+          '</div>';
+      }, 300);
+    } else if(slot.type === 'counter'){
+      // 상대가 직접 선택
+      showTeamComplete();
+      const counterName = customCounterPicker ? customCounterPicker.name : '상대';
+      setTimeout(() => {
+        document.getElementById('startSideLadderBtn').style.display = 'none';
+        const sideArea = document.getElementById('sideLadderArea');
+        sideArea.style.display = '';
+        sideArea.innerHTML =
+          '<div style="font-size:16px;font-weight:700;color:var(--team-red);margin-bottom:12px">🎯 ' + counterName + ' 진영 선택</div>' +
+          '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">' + counterName + '님이 진영을 직접 선택합니다!</div>' +
+          '<div style="display:flex;gap:16px;justify-content:center">' +
+            '<button onclick="customSideSelect(\'blue\')" class="game-btn" style="padding:16px 32px;background:var(--team-blue);color:#fff;font-size:16px;font-weight:900;border-radius:12px">🔵 블루 진영</button>' +
+            '<button onclick="customSideSelect(\'red\')" class="game-btn" style="padding:16px 32px;background:var(--team-red);color:#fff;font-size:16px;font-weight:900;border-radius:12px">🔴 레드 진영</button>' +
+          '</div>';
+      }, 300);
+    }
+    return;
+  }
+
+  // 선수 슬롯
+  if(draftPool.length === 0){
+    setTimeout(() => showTeamComplete(), 500);
+    return;
+  }
+
+  if(slot.type === 'pick'){
+    // 커스텀 픽커(선)가 뽑기
+    currentPickTeam = 'A';
+    draftRound++;
+    picksThisRound = 0;
+    document.getElementById('draftSection').style.display = '';
+    document.getElementById('ladderSection').style.display = 'none';
+    document.getElementById('ladderResult').style.display = 'none';
+    document.getElementById('captainALabel').textContent = '(팀장: ' + teamA[0].name + ')';
+    document.getElementById('captainBLabel').textContent = teamB.length > 0 ? '(팀장: ' + teamB[0].name + ')' : '';
+    renderDraft();
+    logEvent('👑 커스텀 선수' + (customStep + 1) + ': ' + customPicker.name + '(선)이 뽑습니다!');
+  } else if(slot.type === 'counter'){
+    // 상대(후)가 뽑기
+    currentPickTeam = 'B';
+    draftRound++;
+    picksThisRound = 0;
+    document.getElementById('draftSection').style.display = '';
+    document.getElementById('ladderSection').style.display = 'none';
+    document.getElementById('ladderResult').style.display = 'none';
+    document.getElementById('captainALabel').textContent = '(팀장: ' + teamA[0].name + ')';
+    document.getElementById('captainBLabel').textContent = teamB.length > 0 ? '(팀장: ' + teamB[0].name + ')' : '';
+    renderDraft();
+    const counterName = customCounterPicker ? customCounterPicker.name : '상대';
+    logEvent('커스텀 선수' + (customStep + 1) + ': ' + counterName + '(후)이 뽑습니다!');
+  } else if(slot.type === 'ladder'){
+    // 사다리로 결정 — 팀장 2명이 사다리를 타서 선/후 결정
+    if(draftPool.length === 0){
+      customStep++;
+      processNextCustomStep();
+      return;
+    }
+    const pickerImg = teamA[0].img || 'icon.png';
+    const counterImg = teamB.length > 0 ? (teamB[0].img || 'icon.png') : 'icon.png';
+    ladderPlayers[0] = { name: teamA[0].name, id: teamA[0].id, img: pickerImg };
+    ladderPlayers[1] = teamB.length > 0 ? { name: teamB[0].name, id: teamB[0].id, img: counterImg } : null;
+
+    firstPickId = '';
+    firstPickCount = 'always';
+    firstPickUsed = false;
+
+    document.getElementById('draftArea').style.display = '';
+    document.getElementById('ladderSetupArea').style.display = '';
+    document.getElementById('ladderSection').style.display = '';
+    document.getElementById('draftSection').style.display = 'none';
+    document.getElementById('ladderResult').style.display = 'none';
+    const swapBtn = document.getElementById('swapLadderBtn');
+    if(swapBtn) swapBtn.style.display = '';
+
+    bottomLabels = ['X', '선', '후'];
+    ladderRungs = [];
+    ladderAnimResults = null;
+    isLadderRunning = false;
+
+    renderLadderSlots();
+    renderBottomLabels();
+    drawLadder();
+    checkLadderReady();
+    logEvent('커스텀 선수' + (customStep + 1) + ': ' + teamA[0].name + ' vs ' + (teamB.length > 0 ? teamB[0].name : '?') + ' 사다리로 선/후 결정!');
+  }
+}
+
+// 커스텀 모드에서 픽 후 다음 단계로
+function onCustomPickDone(){
+  customStep++;
+  if(draftPool.length === 0){
+    setTimeout(() => {
+      // 진영선택권 슬롯이 남아있으면 그것 먼저 처리
+      const sideSlot = customSlots.find(s => s.isSide);
+      if(sideSlot && customStep <= customSlots.indexOf(sideSlot)){
+        customStep = customSlots.indexOf(sideSlot);
+        processNextCustomStep();
+      } else {
+        showTeamComplete();
+      }
+    }, 500);
+  } else {
+    setTimeout(() => processNextCustomStep(), 500);
+  }
+}
+
+function customSideSelect(side){
+  if(side === 'blue'){
+    teamSide = { A: 'blue', B: 'red' };
+  } else {
+    teamSide = { A: 'red', B: 'blue' };
+  }
+  applyTeamColors();
+
+  const aIsBlue = teamSide.A === 'blue';
+  const aName = aIsBlue ? '블루팀' : '레드팀';
+  logEvent('진영 선택! A팀 = ' + aName);
+
+  document.getElementById('sideLadderArea').style.display = 'none';
+
+  // 최종 팀 재렌더링
+  const renderFinalTeam = (arr, containerId) => {
+    const c = document.getElementById(containerId);
+    c.innerHTML = '';
+    arr.forEach(m => {
+      c.innerHTML += '<div class="team-slot filled">' +
+        '<img src="' + (m.img || 'icon.png') + '" onerror="this.src=\'icon.png\'">' +
+        '<div><div class="slot-name">' + m.name + '</div>' +
+        '<div class="slot-role">' + (m.role || 'PICK') + '</div></div></div>';
+    });
+  };
+  renderFinalTeam(teamA, 'finalTeamA');
+  renderFinalTeam(teamB, 'finalTeamB');
+}
+
+// ========== 키보드 이벤트 ==========
+document.getElementById('loginPw').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
+document.getElementById('newMemberInput').addEventListener('keydown', e => {
+  const results = document.getElementById('memberSearchResults');
+  if(results){
+    const items = results.querySelectorAll('.search-result-item');
+    if(e.key === 'ArrowDown'){
+      e.preventDefault();
+      searchByKeyboard = true;
+      searchHighlightIdx = Math.min(searchHighlightIdx + 1, items.length - 1);
+      updateSearchHighlight();
+    } else if(e.key === 'ArrowUp'){
+      e.preventDefault();
+      searchByKeyboard = true;
+      searchHighlightIdx = Math.max(searchHighlightIdx - 1, -1);
+      if(searchHighlightIdx === -1) searchByKeyboard = false;
+      updateSearchHighlight();
+    } else if(e.key === 'Enter'){
+      e.preventDefault();
+      if(searchHighlightIdx >= 0 && searchHighlightIdx < items.length){
+        items[searchHighlightIdx].click();
+      } else {
+        addTodayMember();
+      }
+      return;
+    } else if(e.key === 'Escape'){
+      hideMemberSearchResults();
+      return;
+    }
+  } else if(e.key === 'Enter'){
+    addTodayMember();
+  }
+});
+
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('#newMemberInput') && !e.target.closest('#memberSearchResults')) hideMemberSearchResults();
+});
+
+// ========== 초기화 ==========
+document.addEventListener('DOMContentLoaded', () => {
+  if(rememberLogin && authToken) showMain();
+  else updateTodayMembersList();
+});
+</script>
+
+</body>
+</html>
