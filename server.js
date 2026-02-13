@@ -2,7 +2,8 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { SoopClient, SoopChatEvent } = require('soop-extension');
+// soop-extension을 사용하지 않고 우리의 검색 시스템만 사용
+// const { SoopClient, SoopChatEvent } = require('soop-extension');
 const { google } = require('googleapis');
 
 const CONFIG = {
@@ -132,6 +133,7 @@ function matchBalloon(userId, userNickname, amount, eventType) {
     collectDomain: matched ? matched.collectDomain : true,
     collectMessage: matched ? matched.collectMessage : true,
     isAutoThreshold: autoMatch,
+    category: matched ? matched.category : '일반',
   };
 
   missionResults.unshift(result);
@@ -203,9 +205,16 @@ function parse0121(rawStr) {
 }
 
 // ============================================
-// SOOP 연결
+// SOOP 연결 (현재 비활성화 - 검색 기능만 사용)
 // ============================================
 async function connectToSoop() {
+  console.log(`🔌 SOOP 채팅 연결 기능은 현재 비활성화됨. 검색 기능만 사용 가능.`);
+  connectionStatus = 'search_only';
+  broadcast('status', { status: connectionStatus, streamerId: CONFIG.STREAMER_ID });
+  return;
+
+  /*
+  // 기존 SOOP 연결 코드 (soop-extension 필요)
   if (!CONFIG.STREAMER_ID) { connectionStatus = 'no_config'; broadcast('status', { status: connectionStatus }); return; }
   try {
     connectionStatus = 'connecting'; broadcast('status', { status: connectionStatus });
@@ -219,214 +228,7 @@ async function connectToSoop() {
 
     soopChat = client.chat(opts);
 
-    soopChat.on(SoopChatEvent.CONNECT, () => console.log(`✅ 채팅 서버 연결`));
-    soopChat.on(SoopChatEvent.ENTER_CHAT_ROOM, () => {
-      connectionStatus = 'connected';
-      broadcast('status', { status: connectionStatus, streamerId: CONFIG.STREAMER_ID });
-      console.log(`🎉 채팅방 입장! 이벤트 감지 시작`);
-    });
-
-    // ⭐ 별풍선
-    soopChat.on(SoopChatEvent.TEXT_DONATION, (d) => {
-      const amt = parseInt(d.amount) || 0;
-      const uid = d.from, nick = d.fromUsername;
-      if (isDuplicate(`balloon_${uid}_${amt}`)) return;  // 3x 중복 방지
-      console.log(`⭐ 별풍선 ${nick}(${uid}) → ${amt}개`);
-      broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'balloon' });
-      const result = matchBalloon(uid, nick, amt, 'balloon');
-
-      // 직전 채팅에서 메시지 찾기 (메시지가 후원보다 먼저 올 수 있음)
-      let foundMsg = null;
-      if (global._recentChats) {
-        const recent = global._recentChats.find(c => normalizeUid(c.userId) === uid && (Date.now() - c.ts) < 60000);
-        if (recent) {
-          foundMsg = recent.comment;
-          console.log(`💬 직전 채팅에서 TTS 연결! ${nick}(${uid}): "${foundMsg}"`);
-          if (result) { result.message = foundMsg; broadcast('resultUpdate', result); }
-          broadcast('donationMsg', { userId: uid, userNickname: nick, amount: amt, message: foundMsg, time: now() });
-        }
-      }
-
-      // 직전에 못 찾았으면 후속 채팅 대기 (60초)
-      if (!foundMsg) {
-        recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
-        setTimeout(() => { delete recentDonors[uid]; }, 60000);
-      }
-    });
-
-    // 🎈 애드벌룬
-    soopChat.on(SoopChatEvent.AD_BALLOON_DONATION, (d) => {
-      const amt = parseInt(d.amount) || 0;
-      const uid = d.from, nick = d.fromUsername;
-      if (isDuplicate(`adballoon_${uid}_${amt}`)) return;
-      console.log(`🎈 애드벌룬 ${nick}(${uid}) → ${amt}개`);
-      broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'adballoon' });
-      matchBalloon(uid, nick, amt, 'adballoon');
-    });
-
-    // 🎬 영상풍선
-    soopChat.on(SoopChatEvent.VIDEO_DONATION, (d) => {
-      const amt = parseInt(d.amount) || 0;
-      const uid = d.from, nick = d.fromUsername;
-      if (isDuplicate(`video_${uid}_${amt}`)) return;
-      console.log(`🎬 영상풍선 ${nick}(${uid}) → ${amt}개`);
-      broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'video' });
-      matchBalloon(uid, nick, amt, 'video');
-    });
-
-    // UNKNOWN 패킷
-    soopChat.on(SoopChatEvent.UNKNOWN, (parts) => {
-      const raw = Array.isArray(parts) ? parts.join('|') : String(parts);
-      if (isDuplicate(`unknown_${raw.substring(0, 100)}`)) return;
-      const entry = {
-        time: now(),
-        partsCount: Array.isArray(parts) ? parts.length : 0,
-        snippet: raw.substring(0, 300),
-        parts: Array.isArray(parts) ? parts.slice(0, 15).map(p => p.substring(0, 80)) : [],
-      };
-      unknownPackets.unshift(entry);
-      if (unknownPackets.length > 200) unknownPackets.pop();
-      broadcast('unknown', entry);
-    });
-
-    // 💬 채팅 → 후원 메시지 연결
-    soopChat.on(SoopChatEvent.CHAT, (d) => {
-      const rawUid = d.userId;
-      const uid = normalizeUid(rawUid);  // maxmp7011(2) → maxmp7011
-      const msg = d.comment;
-      if (isDuplicate(`chat_${uid}_${msg}`)) return;  // 3x 중복 방지
-
-      // 디버그: 모든 채팅 로그 (후원자 대기 목록과 비교)
-      const waiting = Object.keys(recentDonors);
-      if (waiting.length > 0) {
-        console.log(`💬 채팅수신 ${uid}: "${msg}" (대기중: ${waiting.join(',')})`);
-      }
-
-      if (recentDonors[uid] && msg) {
-        const donor = recentDonors[uid];
-        console.log(`✅ TTS 메시지 연결! ${donor.nick}(${uid}): "${msg}"`);
-        // 미션 결과에 메시지 연결
-        if (donor.resultId) {
-          const r = missionResults.find(r => r.id === donor.resultId);
-          if (r) {
-            r.message = msg;
-            broadcast('resultUpdate', r);
-          }
-        }
-        // 별풍선 로그에도 메시지 전송
-        broadcast('donationMsg', { userId: uid, userNickname: donor.nick, amount: donor.amount, message: msg, time: now() });
-        delete recentDonors[uid];
-      }
-    });
-
-    // RAW 패킷
-    soopChat.on(SoopChatEvent.RAW, (buffer) => {
-      try {
-        const str = buffer.toString('utf-8');
-        if (str.length >= 6) {
-          const typeCode = str.substring(2, 6);
-
-          // 후원 패킷 + 후원 직후 채팅 기록
-          if (['0018', '0087', '0105', '0121'].includes(typeCode)) {
-            // RAW 후원패킷 중복 방지
-            const rawHash = str.substring(0, 100);
-            if (isDuplicate(`raw_${typeCode}_${rawHash}`)) return;
-
-            const SEP = '\f';
-            const parts = str.split(SEP);
-            const fieldDump = parts.map((p,i) => `[${i}] = "${p.substring(0,200).replace(/[\x00-\x1f]/g,'·')}"`).join('\n');
-            const debugLog = `[${new Date().toISOString()}] TYPE=${typeCode} PARTS=${parts.length}\n${fieldDump}\n${'='.repeat(60)}\n`;
-            fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
-
-            // 0018 패킷에서 모든 텍스트 필드 검사 (TTS 메시지 후보)
-            if (typeCode === '0018') {
-              const possibleMsgs = parts.filter((p, i) => {
-                if (i <= 5) return false;  // bjId, senderId, nick, count, fanOrder
-                const clean = p.replace(/[\x00-\x1f]/g, '').trim();
-                if (!clean || clean.length < 2) return false;
-                if (/^[0-9._-]+$/.test(clean)) return false;  // 숫자/코드
-                if (/^[a-f0-9-]{36}$/i.test(clean)) return false;  // UUID
-                if (/^[a-z]{2}_[A-Z]{2}$/.test(clean)) return false;  // locale
-                if (/^(kor_|typecast_|tts_)/i.test(clean)) return false;  // TTS 음성명
-                if (clean === parts[1]?.replace(/[\x00-\x1f]/g,'').trim()) return false;  // bjId
-                return true;
-              });
-              if (possibleMsgs.length > 0) {
-                console.log(`📝 0018 패킷 내 텍스트 후보: ${JSON.stringify(possibleMsgs)}`);
-                fs.appendFile(path.join(__dirname, 'donation_debug.log'), `  → 텍스트 후보: ${JSON.stringify(possibleMsgs)}\n`, () => {});
-              }
-            }
-          }
-
-          // 모든 채팅을 최근 버퍼에 저장 (후원 전 메시지 확인용)
-          if (typeCode === '0005') {
-            const SEP = '\f';
-            const chatParts = str.split(SEP);
-            const chatUserId = normalizeUid(chatParts[2]?.replace(/[\x00-\x1f]/g, '').trim());
-            const chatComment = chatParts[1]?.replace(/[\x00-\x1f]/g, '').trim();
-            if (chatUserId && chatComment) {
-              if (isDuplicate(`raw0005_${chatUserId}_${chatComment}`)) return;
-              // 최근 채팅 버퍼에 저장 (최대 50개)
-              if (!global._recentChats) global._recentChats = [];
-              global._recentChats.unshift({ ts: Date.now(), userId: chatUserId, comment: chatComment });
-              if (global._recentChats.length > 50) global._recentChats.pop();
-            }
-            // 후원 후 채팅 매칭 디버그
-            if (chatUserId && recentDonors[chatUserId]) {
-              const debugLog = `[${new Date().toISOString()}] RAW_CHAT_AFTER_DONATION userId=${chatUserId} msg="${chatComment}"\n${'='.repeat(60)}\n`;
-              fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
-            }
-          }
-
-          // 0121 패킷 특별 처리 (도전/대결미션 추정)
-          if (typeCode === '0121') {
-            if (isDuplicate(`raw0121_${str.substring(0, 150)}`)) return;
-            console.log(`🎲 0121 패킷 감지! 길이: ${str.length}`);
-            parse0121(str);
-
-            const entry = {
-              time: now(),
-              typeCode,
-              length: str.length,
-              preview: str.substring(0, 400).replace(/[\x00-\x1f]/g, '·'),
-              fullData: str.replace(/[\x00-\x1f]/g, '·'),
-            };
-            broadcast('rawUnknown', entry);
-
-            // 파일에 전체 내용 기록
-            const logLine = `[${new Date().toISOString()}] TYPE=0121 LEN=${str.length}\nFULL: ${str.replace(/[\x00-\x1f]/g, '·')}\n${'='.repeat(80)}\n`;
-            fs.appendFile(path.join(__dirname, 'unknown_packets.log'), logLine, () => {});
-          }
-          else if (!KNOWN_TYPES.has(typeCode)) {
-            const entry = {
-              time: now(),
-              typeCode,
-              length: str.length,
-              preview: str.substring(0, 300).replace(/[\x00-\x1f]/g, '·'),
-            };
-            broadcast('rawUnknown', entry);
-
-            const logLine = `[${new Date().toISOString()}] TYPE=${typeCode} LEN=${str.length} DATA=${str.substring(0, 500).replace(/[\x00-\x1f]/g, '·')}\n`;
-            fs.appendFile(path.join(__dirname, 'unknown_packets.log'), logLine, () => {});
-          }
-        }
-      } catch(e) {}
-    });
-
-    soopChat.on(SoopChatEvent.DISCONNECT, () => {
-      connectionStatus = 'disconnected';
-      broadcast('status', { status: connectionStatus });
-      console.log('❌ 연결 끊김. 10초 후 재연결');
-      scheduleReconnect();
-    });
-
-    await soopChat.connect();
-  } catch (e) {
-    console.error(`❌ 연결 실패: ${e.message}`);
-    connectionStatus = 'error';
-    broadcast('status', { status: connectionStatus, error: e.message });
-    scheduleReconnect();
-  }
+  */
 }
 
 function scheduleReconnect() {
@@ -436,14 +238,71 @@ function scheduleReconnect() {
 
 function now() { return new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
 
+// SOOP 프로필 이미지 URL 생성 함수
+function getSOOPProfileImage(streamerId) {
+  // SOOP 프로필 이미지 URL 패턴: https://stimg.sooplive.co.kr/LOGO/{first_2_chars}/{streamer_id}/{streamer_id}.jpg
+  const prefix = streamerId.substring(0, 2).toLowerCase();
+  const imageUrl = `https://stimg.sooplive.co.kr/LOGO/${prefix}/${streamerId}/${streamerId}.jpg`;
+
+  // 폴백 이미지 (이미지가 없을 경우)
+  return imageUrl;
+}
+
+// SOOP BJ 검색 API (sch.sooplive.co.kr)
+async function searchSOOPStreamers(query) {
+  const https = require('https');
+  return new Promise((resolve) => {
+    const url = `https://sch.sooplive.co.kr/api.php?m=bjSearch&v=1.0&szKeyword=${encodeURIComponent(query)}&nPageNo=1&nLimit=30`;
+    https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Referer': 'https://www.sooplive.co.kr/'
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.DATA && json.DATA.length > 0) {
+            resolve(json.DATA
+              .filter(d => (parseInt(d.favorite_cnt) || 0) >= 1000)
+              .map(d => ({
+                id: d.user_id,
+                name: d.user_nick,
+                profileImage: d.station_logo || getSOOPProfileImage(d.user_id),
+                channelUrl: `https://ch.sooplive.co.kr/${d.user_id}`,
+                favorite_cnt: d.favorite_cnt || 0
+              })));
+          } else {
+            resolve([]);
+          }
+        } catch(e) {
+          console.error('SOOP bjSearch 파싱 실패:', e);
+          resolve([]);
+        }
+      });
+    }).on('error', (e) => {
+      console.error('SOOP bjSearch 요청 실패:', e);
+      resolve([]);
+    });
+  });
+}
+
 // ============================================
 // HTTP 서버
 // ============================================
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${CONFIG.PORT}`);
+
+  // 성능 최적화 헤더
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // 캐시 비활성화
+  res.setHeader('Connection', 'keep-alive');
+
   if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
   const body = () => new Promise(r => { let b=''; req.on('data',c=>b+=c); req.on('end',()=>r(JSON.parse(b||'{}'))); });
   const json = (d, c=200) => { res.writeHead(c, {'Content-Type':'application/json'}); res.end(JSON.stringify(d)); };
@@ -491,7 +350,7 @@ const server = http.createServer((req, res) => {
   // 템플릿
   if (url.pathname === '/api/templates' && req.method === 'POST') {
     body().then(d => {
-      const t = { id: Date.now(), name: d.name||'미션', starCount: parseInt(d.starCount)||500, eventType: d.eventType||'all', collectDomain: d.collectDomain!==false, collectMessage: d.collectMessage===true, active: true };
+      const t = { id: Date.now(), name: d.name||'미션', starCount: parseInt(d.starCount)||500, eventType: d.eventType||'all', collectDomain: d.collectDomain!==false, collectMessage: d.collectMessage===true, active: true, category: d.category||'일반' };
       missionTemplates.push(t);
       missionTemplates.sort((a,b) => b.starCount - a.starCount);
       broadcast('templates', missionTemplates); json({ok:true});
@@ -506,6 +365,7 @@ const server = http.createServer((req, res) => {
         if(d.eventType!==undefined) t.eventType=d.eventType;
         if(d.collectDomain!==undefined) t.collectDomain=d.collectDomain;
         if(d.collectMessage!==undefined) t.collectMessage=d.collectMessage;
+        if(d.category!==undefined) t.category=d.category;
         missionTemplates.sort((a,b)=>b.starCount-a.starCount);
       }
       broadcast('templates', missionTemplates); json({ok:true});
@@ -542,6 +402,16 @@ const server = http.createServer((req, res) => {
     missionResults=[]; broadcast('resetResults',{}); return json({ok:true});
   }
 
+  // 결과 필터링
+  if (url.pathname === '/api/results/filter' && req.method === 'GET') {
+    const category = url.searchParams.get('category');
+    let filteredResults = missionResults;
+    if (category && category !== '전체') {
+      filteredResults = missionResults.filter(r => r.category === category);
+    }
+    return json({ results: filteredResults, categories: [...new Set(missionResults.map(r => r.category))] });
+  }
+
   // 설정
   if (url.pathname === '/api/config' && req.method === 'GET') return json({streamerId:CONFIG.STREAMER_ID, autoThreshold});
   if (url.pathname === '/api/config' && req.method === 'POST') {
@@ -558,11 +428,74 @@ const server = http.createServer((req, res) => {
     if(soopChat){try{soopChat.disconnect();}catch(e){}} connectToSoop(); return json({ok:true});
   }
 
+  // SOOP 방송 상태 확인 API (여러 BJ 한번에)
+  if (url.pathname === '/api/live-status' && req.method === 'POST') {
+    body().then(async (reqData) => {
+      const bids = reqData.bids || [];
+      if(!bids.length) return json({ results: {} });
+      const https = require('https');
+      const results = {};
+      await Promise.all(bids.map(bid => new Promise(resolve => {
+        const postData = `bid=${encodeURIComponent(bid)}`;
+        const req2 = https.request({
+          hostname: 'live.sooplive.co.kr',
+          path: '/afreeca/player_live_api.php',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': Buffer.byteLength(postData),
+            'User-Agent': 'Mozilla/5.0',
+            'Referer': `https://play.sooplive.co.kr/${bid}`
+          }
+        }, (res2) => {
+          let data = '';
+          res2.on('data', c => data += c);
+          res2.on('end', () => {
+            try {
+              const j = JSON.parse(data);
+              const ch = j.CHANNEL || {};
+              results[bid] = { live: ch.RESULT === 1, bno: ch.BNO || '', title: ch.TITLE || '' };
+            } catch(e) { results[bid] = { live: false }; }
+            resolve();
+          });
+        });
+        req2.on('error', () => { results[bid] = { live: false }; resolve(); });
+        req2.write(postData);
+        req2.end();
+      })));
+      json({ results });
+    });
+    return;
+  }
+
+  // SOOP 스트리머 검색 API
+  if (url.pathname === '/api/search-streamer' && req.method === 'GET') {
+    const query = url.searchParams.get('q');
+    if (!query || query.length < 1) return json({ streamers: [] });
+
+    // Promise 체인 방식
+    searchSOOPStreamers(query)
+      .then(searchResults => {
+        return json({ streamers: searchResults });
+      })
+      .catch(e => {
+        console.error('SOOP 검색 API 실패:', e);
+        console.log(`모든 SOOP 검색 방법 실패. 쿼리: "${query}"`);
+        return json({ streamers: [], error: 'SOOP 검색 서버 연결 실패' });
+      });
+    return; // 여기서 끝
+  }
+
   // Google Sheets 추출 (직접 API)
   if (url.pathname === '/api/export-sheets' && req.method === 'POST') {
     if (!authOk()) return json({ ok: false, error: '인증 필요' }, 401);
     if (!missionResults.length) return json({ ok: false, error: '추출할 데이터가 없습니다' }, 400);
-    body().then(async () => {
+    body().then(async (reqData) => {
+      const filterCategory = reqData.category;
+      let dataToExport = missionResults;
+      if (filterCategory && filterCategory !== '전체') {
+        dataToExport = missionResults.filter(r => r.category === filterCategory);
+      }
       try {
         const auth = new google.auth.GoogleAuth({
           scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
@@ -572,13 +505,15 @@ const server = http.createServer((req, res) => {
         const typeName = {balloon:'별풍선',adballoon:'애드벌룬',video:'영상풍선',mission:'대결미션'};
         const d = new Date();
         const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        const title = `MK미션_${dateStr}`;
-        const header = ['미션명','타입','개수','닉네임','유저ID','방송국링크','메시지','상태','시간','확인'];
-        const rows = missionResults.map(r => ([
-          r.templateName||'', typeName[r.eventType||'balloon']||'', r.amount||0,
+        const categoryFilter = filterCategory && filterCategory !== '전체' ? `_${filterCategory}` : '';
+        const title = `MK미션${categoryFilter}_${dateStr}`;
+        const header = ['카테고리','미션명','타입','개수','닉네임','유저ID','방송국링크','메시지','상태','시간','확인'];
+        const rows = dataToExport.map(r => ([
+          r.category||'일반', r.templateName||'', typeName[r.eventType||'balloon']||'', r.amount||0,
           r.userNickname||'', r.userId||'',
           r.channelUrl||'', r.message||'',
-          r.completed?'완료':'진행중', r.createdAt||''
+          r.completed?'완료':'진행중', r.createdAt||'',
+          r.completed?true:false  // 확인 열에 체크박스 초기값 설정
         ]));
 
         // 1) 새 스프레드시트 생성
@@ -600,28 +535,105 @@ const server = http.createServer((req, res) => {
           requestBody: { values: [header, ...rows] },
         });
 
-        // 3) 서식 (헤더 색상, 체크박스, 열 너비, 링크 색)
+        // 3) 모든 사용자에게 편집 권한 부여
+        const drive = google.drive({ version: 'v3', auth });
+        await drive.permissions.create({
+          fileId: ssId,
+          requestBody: {
+            role: 'writer',
+            type: 'anyone'
+          },
+        });
+        console.log(`🔓 스프레드시트 권한 설정: 모든 사용자 편집 가능`);
+
+        // 4) 서식 (헤더 색상, 체크박스, 열 너비, 링크 색)
         const reqs = [
           // 헤더 배경색 + 흰 글씨 + 볼드
           { repeatCell: { range: { sheetId:0, startRowIndex:0, endRowIndex:1 }, cell: { userEnteredFormat: { backgroundColor:{red:.18,green:.49,blue:.2}, textFormat:{bold:true,foregroundColor:{red:1,green:1,blue:1}}, horizontalAlignment:'CENTER' } }, fields:'userEnteredFormat' } },
-          // 확인 열 체크박스 (J열 = index 9)
-          { repeatCell: { range: { sheetId:0, startRowIndex:1, endRowIndex:rows.length+1, startColumnIndex:9, endColumnIndex:10 }, cell: { dataValidation: { condition: { type:'BOOLEAN' } } }, fields:'dataValidation' } },
+          // 확인 열 체크박스 (K열 = index 10, 카테고리 추가로 1 증가)
+          { repeatCell: { range: { sheetId:0, startRowIndex:1, endRowIndex:rows.length+1, startColumnIndex:10, endColumnIndex:11 }, cell: { dataValidation: { condition: { type:'BOOLEAN' } } }, fields:'dataValidation' } },
           // 열 너비 자동
-          { autoResizeDimensions: { dimensions: { sheetId:0, dimension:'COLUMNS', startIndex:0, endIndex:10 } } },
+          { autoResizeDimensions: { dimensions: { sheetId:0, dimension:'COLUMNS', startIndex:0, endIndex:11 } } },
         ];
 
-        // 상태 열 색상 (H열 = index 7)
+        // 상태 열 색상 (I열 = index 8, 카테고리 추가로 1 증가)
         rows.forEach((r, i) => {
-          const color = r[7]==='완료' ? {red:.83,green:.18,blue:.18} : {red:.18,green:.49,blue:.2};
-          reqs.push({ repeatCell: { range:{ sheetId:0, startRowIndex:i+1, endRowIndex:i+2, startColumnIndex:7, endColumnIndex:8 }, cell:{ userEnteredFormat:{ textFormat:{ bold:true, foregroundColor:color } } }, fields:'userEnteredFormat.textFormat' } });
+          const color = r[8]==='완료' ? {red:.83,green:.18,blue:.18} : {red:.18,green:.49,blue:.2};
+          reqs.push({ repeatCell: { range:{ sheetId:0, startRowIndex:i+1, endRowIndex:i+2, startColumnIndex:8, endColumnIndex:9 }, cell:{ userEnteredFormat:{ textFormat:{ bold:true, foregroundColor:color } } }, fields:'userEnteredFormat.textFormat' } });
         });
 
-        // 방송국 링크 열 파란색 (F열 = index 5)
+        // 방송국 링크 열 파란색 (G열 = index 6, 카테고리 추가로 1 증가)
         if (rows.length > 0) {
-          reqs.push({ repeatCell: { range:{ sheetId:0, startRowIndex:1, endRowIndex:rows.length+1, startColumnIndex:5, endColumnIndex:6 }, cell:{ userEnteredFormat:{ textFormat:{ foregroundColor:{red:.1,green:.45,blue:.91} } } }, fields:'userEnteredFormat.textFormat.foregroundColor' } });
+          reqs.push({ repeatCell: { range:{ sheetId:0, startRowIndex:1, endRowIndex:rows.length+1, startColumnIndex:6, endColumnIndex:7 }, cell:{ userEnteredFormat:{ textFormat:{ foregroundColor:{red:.1,green:.45,blue:.91} } } }, fields:'userEnteredFormat.textFormat.foregroundColor' } });
         }
 
         await sheets.spreadsheets.batchUpdate({ spreadsheetId: ssId, requestBody: { requests: reqs } });
+
+        // 5) Google Apps Script 추가 (H열과 J열 동기화)
+        const script = google.script({ version: 'v1', auth });
+        try {
+          // Apps Script 프로젝트 생성
+          const scriptProject = await script.projects.create({
+            requestBody: {
+              title: `MK미션_스크립트_${Date.now()}`,
+              parentId: ssId
+            }
+          });
+
+          // 동기화 스크립트 코드 (카테고리 추가로 열 인덱스 1씩 증가)
+          const scriptCode = `
+function onEdit(e) {
+  const sheet = e.source.getActiveSheet();
+  const range = e.range;
+  const row = range.getRow();
+  const col = range.getColumn();
+
+  // 헤더 행은 제외
+  if (row <= 1) return;
+
+  // I열(상태) 변경 시 K열(확인) 업데이트 (카테고리 추가로 1 증가)
+  if (col === 9) { // I열
+    const statusValue = range.getValue();
+    const checkCell = sheet.getRange(row, 11); // K열
+
+    if (statusValue === '완료') {
+      checkCell.setValue(true);
+    } else if (statusValue === '진행중') {
+      checkCell.setValue(false);
+    }
+  }
+
+  // K열(확인) 변경 시 I열(상태) 업데이트 (카테고리 추가로 1 증가)
+  if (col === 11) { // K열
+    const checkValue = range.getValue();
+    const statusCell = sheet.getRange(row, 9); // I열
+
+    if (checkValue === true) {
+      statusCell.setValue('완료');
+    } else if (checkValue === false) {
+      statusCell.setValue('진행중');
+    }
+  }
+}`;
+
+          // 스크립트 파일 업데이트
+          await script.projects.updateContent({
+            scriptId: scriptProject.data.scriptId,
+            requestBody: {
+              files: [
+                {
+                  name: 'Code',
+                  type: 'SERVER_JS',
+                  source: scriptCode
+                }
+              ]
+            }
+          });
+
+          console.log(`📜 Apps Script 동기화 스크립트 추가 완료`);
+        } catch(scriptError) {
+          console.log(`⚠️ Apps Script 추가 실패 (권한 문제일 수 있음): ${scriptError.message}`);
+        }
 
         json({ ok: true, url: ssUrl });
       } catch(e) {
@@ -643,8 +655,16 @@ const server = http.createServer((req, res) => {
     }); return;
   }
 
-  // 대시보드
+  // 메인 대시보드
   if (url.pathname === '/' || url.pathname === '/index.html') {
+    fs.readFile(path.join(__dirname, 'main-dashboard.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // 미션매니저 대시보드
+  if (url.pathname === '/mission' || url.pathname === '/dashboard.html') {
     fs.readFile(path.join(__dirname, 'dashboard.html'), (e, d) => {
       if(e){res.writeHead(500);res.end('err');return;}
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);

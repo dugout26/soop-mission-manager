@@ -198,6 +198,7 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     <!-- 등록 폼 -->
     <div class="tpl-form">
       <div class="fg"><label>미션 이름</label><input id="tName" placeholder="역팬, 방셀 등" style="width:100px"></div>
+      <div class="fg"><label>카테고리</label><input id="tCategory" placeholder="역팬1, 역팬2, 방셀 등" style="width:100px"></div>
       <div class="fg"><label>개수 (정확히)</label><input id="tCount" type="number" value="500" style="width:80px"></div>
       <div class="fg"><label>타입</label>
         <div class="type-chips" id="tTypeChips">
@@ -229,8 +230,11 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
       <button class="ft type-ft" onclick="setTF('mission',this)" style="border-color:rgba(234,179,8,.3);color:var(--yellow)">대결미션</button>
       <button class="ft type-ft" onclick="setTF('balloon',this)" style="border-color:rgba(74,222,128,.3);color:var(--blue)">별풍선</button>
       <button class="ft type-ft" onclick="setTF('adballoon',this)" style="border-color:rgba(134,239,172,.3);color:var(--purple)">애드벌룬</button>
+      <span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span>
+      <div id="categoryFilters" style="display:flex;gap:3px;flex-wrap:wrap">
+        <button class="ft category-ft" onclick="setCF('전체',this)" style="border-color:rgba(110,231,183,.3);color:var(--cyan)">전체</button>
+      </div>
       <button class="ft" id="sheetBtn" style="margin-left:auto;border-color:rgba(74,222,128,.3);color:var(--blue)" onclick="exportSheets()">📊 구글시트</button>
-      <button class="ft" style="border-color:rgba(110,231,183,.3);color:var(--cyan)" onclick="exportCSV()">📄 CSV</button>
       <button class="ft" style="border-color:rgba(239,68,68,.3);color:var(--red)" onclick="resetResults()">🗑 초기화</button>
     </div>
     <div class="results" id="resList">
@@ -247,8 +251,9 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 </div>
 
 <script>
-let templates=[], results=[], filter='all', typeFilter='all', autoThreshold=0, es=null, editingId=null;
+let templates=[], results=[], filter='all', typeFilter='all', categoryFilter='전체', autoThreshold=0, es=null, editingId=null;
 let authToken=sessionStorage.getItem('mk_token')||'';
+let availableCategories=new Set(['일반']);
 
 // 인증
 async function doLogin(){
@@ -331,23 +336,29 @@ function pickType(btn){
 // 템플릿
 async function addTemplate(){
   const name=document.getElementById('tName').value.trim()||'미션';
+  const category=document.getElementById('tCategory').value.trim()||'일반';
   const starCount=parseInt(document.getElementById('tCount').value)||500;
   const eventType=selectedType;
   const collectDomain=document.getElementById('tDomain').checked;
   const collectMessage=document.getElementById('tMsg').checked;
-  await fetch('/api/templates',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,starCount,eventType,collectDomain,collectMessage})});
+  await fetch('/api/templates',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,category,starCount,eventType,collectDomain,collectMessage})});
   document.getElementById('tName').value='';
+  document.getElementById('tCategory').value='';
 }
 
 function renderTpl(){
   const el=document.getElementById('tplList');
   if(!templates.length){el.innerHTML='<div class="empty" style="padding:12px;width:100%"><div class="icon">📋</div>미션을 등록해주세요!</div>';return}
   el.innerHTML=templates.map(t=>{
+    // 카테고리를 availableCategories에 추가
+    if(t.category) availableCategories.add(t.category);
+
     if(editingId===t.id){
       const et=t.eventType||'all';
       return`<div class="tpl-card editing">
         <div class="edit-inline">
           <input id="eName" value="${t.name}" style="width:80px" placeholder="이름">
+          <input id="eCategory" value="${t.category||'일반'}" style="width:80px" placeholder="카테고리">
           <input id="eCount" type="number" value="${t.starCount}" style="width:70px">
           <div class="type-chips" id="eTypeChips">
             <button class="tc ${et==='all'?'active':''}" data-val="all" onclick="pickEditType(this)">전체</button>
@@ -365,10 +376,11 @@ function renderTpl(){
     return`<div class="tpl-card ${t.active?'':'inactive'}">
       <div class="tpl-star">⭐${t.starCount}</div>
       <div>
-        <div class="tpl-name">${t.name}</div>
+        <div class="tpl-name">${t.name} <span style="font-size:9px;color:var(--muted)">[${t.category||'일반'}]</span></div>
         <div class="tpl-cond">${t.starCount}개 · ${({all:'전체',balloon:'별풍선',adballoon:'애드벌룬',mission:'대결미션'})[t.eventType||'all']}</div>
         <div class="tpl-tags">
           <span class="tpl-tag" style="background:rgba(74,222,128,.12);color:var(--blue)">${({all:'전체',balloon:'⭐별풍',adballoon:'🎈애드',mission:'⚔대결'})[t.eventType||'all']}</span>
+          <span class="tpl-tag" style="background:rgba(110,231,183,.12);color:var(--cyan)">${t.category||'일반'}</span>
           ${t.collectDomain?'<span class="tpl-tag domain">🔗도메인</span>':''}
           ${t.collectMessage?'<span class="tpl-tag msg">💬메시지</span>':''}
         </div>
@@ -380,6 +392,7 @@ function renderTpl(){
       </div>
     </div>`;
   }).join('');
+  updateCategoryFilters();
 }
 
 let editType='all';
@@ -391,15 +404,37 @@ function pickEditType(btn){
 function startEdit(id){editingId=id;const t=templates.find(x=>x.id===id);editType=t?.eventType||'all';renderTpl()}
 async function saveEdit(id){
   const name=document.getElementById('eName').value.trim();
+  const category=document.getElementById('eCategory').value.trim()||'일반';
   const starCount=parseInt(document.getElementById('eCount').value);
   const eventType=editType;
   const collectDomain=document.getElementById('eDomain').checked;
   const collectMessage=document.getElementById('eMsg').checked;
-  await fetch('/api/templates/update',{method:'POST',headers:authHeaders(),body:JSON.stringify({id,name,starCount,eventType,collectDomain,collectMessage})});
+  await fetch('/api/templates/update',{method:'POST',headers:authHeaders(),body:JSON.stringify({id,name,category,starCount,eventType,collectDomain,collectMessage})});
   editingId=null;
 }
 async function toggleTpl(id){await fetch('/api/templates/toggle',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
 async function delTpl(id){if(!confirm('삭제?'))return;await fetch('/api/templates/delete',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
+
+// 카테고리 필터 업데이트
+function updateCategoryFilters(){
+  // results에서도 카테고리 수집
+  results.forEach(r=>{
+    if(r.category) availableCategories.add(r.category);
+  });
+
+  const el=document.getElementById('categoryFilters');
+  const categories=Array.from(availableCategories).sort();
+  el.innerHTML=`<button class="ft category-ft ${categoryFilter==='전체'?'active':''}" onclick="setCF('전체',this)" style="border-color:rgba(110,231,183,.3);color:var(--cyan)">전체</button>` +
+    categories.map(cat=>`<button class="ft category-ft ${categoryFilter===cat?'active':''}" onclick="setCF('${cat}',this)" style="border-color:rgba(110,231,183,.3);color:var(--cyan)">${cat}</button>`).join('');
+}
+
+// 카테고리 필터 설정
+function setCF(category,btn){
+  categoryFilter=category;
+  document.querySelectorAll('.category-ft').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderRes();
+}
 
 // 결과
 function renderRes(){
@@ -408,6 +443,7 @@ function renderRes(){
   if(filter==='pending')list=list.filter(r=>!r.completed);
   else if(filter==='done')list=list.filter(r=>r.completed);
   if(typeFilter!=='all')list=list.filter(r=>(r.eventType||'balloon')===typeFilter);
+  if(categoryFilter!=='전체')list=list.filter(r=>(r.category||'일반')===categoryFilter);
   if(!list.length){el.innerHTML='<div class="empty"><div class="icon">🎮</div>미션을 기다리는 중...</div>';return}
   el.innerHTML=list.map(r=>{
     const et=r.eventType||'balloon';
@@ -416,12 +452,13 @@ function renderRes(){
     const linkBtn=r.channelUrl&&!r.completed?`<a href="${r.channelUrl}" target="_blank" class="rb go">방송국→</a>`:'';
     const memoField=r.collectMessage?`<input class="r-memo" value="${r.message||''}" placeholder="메모..." onchange="updMemo(${r.id},this.value)" onclick="event.stopPropagation()">`:'';
     const tagHtml=isAuto?'<span class="tag thresh">자동등록</span>':'<span class="tag auto">매칭</span>';
+    const categoryTag=`<span class="tag" style="background:rgba(110,231,183,.15);color:var(--cyan)">${r.category||'일반'}</span>`;
     const msgDisplay=r.message?`<span class="r-msg">"${r.message}"</span>`:'';
     const memoLine=r.collectMessage&&!r.message?`<div class="r-detail">${memoField}</div>`:'';
     return`<div class="r-card ${r.completed?'done':''}">
       <span class="r-badge ${badgeClass}">⭐${r.amount} ${r.templateName}</span>
       <div class="r-info">
-        <div class="r-user">${r.userNickname||r.userId||'?'} ${msgDisplay} ${tagHtml}</div>
+        <div class="r-user">${r.userNickname||r.userId||'?'} ${msgDisplay} ${categoryTag} ${tagHtml}</div>
         ${memoLine}
       </div>
       <div class="stamp">완료</div>
@@ -433,6 +470,7 @@ function renderRes(){
       </div>
     </div>`
   }).join('');
+  updateCategoryFilters();
 }
 
 function setF(f,btn){filter=f;document.querySelectorAll('.ft:not(.type-ft)').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderRes()}
@@ -456,7 +494,12 @@ async function exportSheets(){
   const btn=document.getElementById('sheetBtn');
   btn.textContent='⏳ 생성중...';btn.disabled=true;
   try{
-    const r=await fetch('/api/export-sheets',{method:'POST',headers:authHeaders(),body:JSON.stringify({})});
+    const exportData={};
+    if(categoryFilter!=='전체'){
+      exportData.category=categoryFilter;
+      btn.textContent=`⏳ ${categoryFilter} 생성중...`;
+    }
+    const r=await fetch('/api/export-sheets',{method:'POST',headers:authHeaders(),body:JSON.stringify(exportData)});
     const d=await r.json();
     btn.textContent='📊 구글시트';btn.disabled=false;
     if(d.ok!==false&&d.url){window.open(d.url,'_blank')}
@@ -513,7 +556,7 @@ async function loadCfg(){try{const r=await fetch('/api/config');const c=await r.
 
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='sInput')setStreamer();
-  if(e.key==='Enter'&&['tName','tCount'].includes(e.target.id))addTemplate();
+  if(e.key==='Enter'&&['tName','tCategory','tCount'].includes(e.target.id))addTemplate();
   if(e.key==='Enter'&&e.target.id==='autoVal')setAutoThreshold();
 });
 
