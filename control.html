@@ -116,9 +116,9 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     <button class="btn btn-muted" onclick="toggleAll(true)">전체 열기</button>
     <button class="btn btn-muted" onclick="toggleAll(false)">전체 닫기</button>
     <button class="btn btn-muted" onclick="resetControl()" style="color:#ef4444">초기화</button>
-    <span id="maxWarn" style="font-size:10px;color:var(--orange);font-weight:600;display:none">영상 최대 4개 동시 표시</span>
+    <span id="maxWarn" style="font-size:10px;color:var(--orange);font-weight:600">영상 최대 4개 동시 표시</span>
     <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;margin-left:8px">
-      <input type="checkbox" id="openInTab" checked onchange="document.getElementById('maxWarn').style.display=this.checked?'none':'inline'" style="accent-color:var(--green);cursor:pointer"> 새탭에서 보기
+      <input type="checkbox" id="openInTab" onchange="document.getElementById('maxWarn').style.display=this.checked?'none':'inline'" style="accent-color:var(--green);cursor:pointer"> 새탭에서 보기
     </label>
     <div style="flex:1"></div>
     <div id="liveCount"></div>
