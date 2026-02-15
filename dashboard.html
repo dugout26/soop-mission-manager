@@ -609,6 +609,9 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{
   if(e.target.id==='lolName'){
     clearTimeout(lolSearchTimer);
+    lolSelectedStreamer=null;
+    document.getElementById('lolSelected').style.display='none';
+    document.getElementById('lolList').innerHTML='';
     const q=e.target.value.trim();
     if(!q){document.getElementById('lolSearchResults').style.display='none';return;}
     lolSearchTimer=setTimeout(()=>searchSoopForLol(q),300);
