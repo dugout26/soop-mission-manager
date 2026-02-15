@@ -115,6 +115,7 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     <button class="btn btn-green" onclick="refreshLiveStatus()">📡 라이브 체크</button>
     <button class="btn btn-muted" onclick="toggleAll(true)">전체 열기</button>
     <button class="btn btn-muted" onclick="toggleAll(false)">전체 닫기</button>
+    <button class="btn btn-muted" onclick="resetControl()" style="color:#ef4444">초기화</button>
     <span style="font-size:10px;color:var(--orange);font-weight:600">영상 최대 4개 동시 표시</span>
     <div style="flex:1"></div>
     <div id="liveCount"></div>
@@ -459,6 +460,15 @@ function selectStreamer(bid, name, img, team) {
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) { hideSearch('A'); hideSearch('B'); }
 });
+
+// ═══════════ RESET ═══════════
+function resetControl() {
+  toggleAll(false);
+  currentGame = { teamA: [], teamB: [], timestamp: new Date().toISOString() };
+  liveStatus = {};
+  openStreams = {};
+  renderTeams();
+}
 
 // ═══════════ AUTO SYNC ═══════════
 window.addEventListener('storage', e => { if (e.key === 'mk_ladder_history') loadLatestGame(); });
