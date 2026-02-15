@@ -116,9 +116,9 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     <button class="btn btn-muted" onclick="toggleAll(true)">전체 열기</button>
     <button class="btn btn-muted" onclick="toggleAll(false)">전체 닫기</button>
     <button class="btn btn-muted" onclick="resetControl()" style="color:#ef4444">초기화</button>
-    <span style="font-size:10px;color:var(--orange);font-weight:600">영상 최대 4개 동시 표시</span>
+    <span id="maxWarn" style="font-size:10px;color:var(--orange);font-weight:600;display:none">영상 최대 4개 동시 표시</span>
     <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;margin-left:8px">
-      <input type="checkbox" id="openInTab" style="accent-color:var(--green);cursor:pointer"> 새탭에서 보기
+      <input type="checkbox" id="openInTab" checked onchange="document.getElementById('maxWarn').style.display=this.checked?'none':'inline'" style="accent-color:var(--green);cursor:pointer"> 새탭에서 보기
     </label>
     <div style="flex:1"></div>
     <div id="liveCount"></div>
@@ -126,27 +126,22 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
   </div>
 
   <div id="helpCard" style="display:none;margin:0 16px 12px;padding:16px 20px;background:var(--card2);border:1px solid var(--border);border-radius:12px;max-width:600px">
-    <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:10px">SOOP 로그인 유지 설정</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">영상에 광고가 뜨거나 로그인이 안 되면 아래 설정을 1번만 해주세요</div>
+    <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:10px">광고 없이 보는 법</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">SOOP 로그인 상태에서 광고 없이 시청하려면 <b style="color:var(--text)">"새탭에서 보기"</b>를 사용하세요</div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <div style="display:flex;align-items:flex-start;gap:10px">
         <span style="background:var(--green);color:#000;font-weight:700;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px">1</span>
-        <div style="font-size:13px;color:var(--text)">크롬 주소창에 <span onclick="copyText('chrome://settings/cookies')" style="background:var(--card);padding:2px 8px;border-radius:4px;color:var(--green);cursor:pointer;font-family:monospace;font-size:12px">chrome://settings/cookies</span> 입력 후 이동</div>
+        <div style="font-size:13px;color:var(--text)">크롬에서 SOOP 로그인 (이미 되어있으면 OK)</div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:10px">
         <span style="background:var(--green);color:#000;font-weight:700;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px">2</span>
-        <div style="font-size:13px;color:var(--text)"><b>서드 파티 쿠키를 사용할 수 있는 사이트</b> 에서 <b style="color:var(--green)">"추가"</b> 클릭</div>
+        <div style="font-size:13px;color:var(--text)">상단 <b style="color:var(--green)">"새탭에서 보기"</b> 체크 (기본 체크됨)</div>
       </div>
       <div style="display:flex;align-items:flex-start;gap:10px">
         <span style="background:var(--green);color:#000;font-weight:700;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px">3</span>
-        <div style="font-size:13px;color:var(--text)"><span onclick="copyText('[*.]sooplive.co.kr')" style="background:var(--card);padding:2px 8px;border-radius:4px;color:var(--green);cursor:pointer;font-family:monospace;font-size:12px">[*.]sooplive.co.kr</span> 입력 → <b>"이 사이트에서 서드 파티 쿠키 포함"</b> 체크 → 추가</div>
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px">
-        <span style="background:var(--green);color:#000;font-weight:700;border-radius:50%;min-width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px">4</span>
-        <div style="font-size:13px;color:var(--text)">페이지 새로고침하면 끝! (1번만 설정하면 계속 유지됩니다)</div>
+        <div style="font-size:13px;color:var(--text)">멤버 카드 클릭 → 새 탭에서 로그인 상태로 바로 시청!</div>
       </div>
     </div>
-    <div id="copyToast" style="display:none;margin-top:8px;font-size:11px;color:var(--green)">복사됨!</div>
   </div>
 
   <div id="content"></div>
