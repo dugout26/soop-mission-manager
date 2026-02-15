@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사다리 타기</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080f0a;--card:#0f1a12;--card2:#162219;--blue:#4ade80;--orange:#f97316;--green:#22c55e;--red:#ef4444;--purple:#86efac;--cyan:#6ee7b7;--yellow:#eab308;--text:#f1f4f1;--text2:#88a090;--muted:#557060;--border:#1e3625}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.logo{font-family:'Black Han Sans';font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+.logo img{width:32px;height:32px;border-radius:6px}
+.container{max-width:1400px;margin:0 auto;padding:16px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px}
+.ctrl-group{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)}
+.ctrl-group label{font-weight:600;white-space:nowrap}
+.ctrl-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s}
+.ctrl-btn:hover{border-color:var(--green);color:var(--green)}
+.ctrl-val{width:32px;text-align:center;font-size:15px;font-weight:800;color:var(--green)}
+.action-btn{padding:7px 16px;border-radius:6px;border:1px solid;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;background:transparent}
+.action-btn.start{border-color:var(--green);color:var(--green)}
+.action-btn.start:hover{background:rgba(34,197,94,.12)}
+.action-btn.shuffle{border-color:var(--orange);color:var(--orange)}
+.action-btn.shuffle:hover{background:rgba(245,158,11,.12)}
+.action-btn.reset{border-color:var(--muted);color:var(--muted)}
+.action-btn.reset:hover{background:rgba(100,116,139,.12)}
+.action-btn.showall{border-color:var(--cyan);color:var(--cyan)}
+.action-btn.showall:hover{background:rgba(34,211,238,.12)}
+.action-btn:disabled{opacity:.4;cursor:default}
+.ladder-area{width:100%;display:flex;flex-direction:column;align-items:center}
+.inputs-row{position:relative;height:36px}
+.inputs-row input{position:absolute;top:0;transform:translateX(-50%);width:72px;padding:6px 4px;text-align:center;border-radius:6px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:12px;font-weight:600;font-family:inherit;transition:border-color .15s}
+.inputs-row input:focus{outline:none;border-color:var(--green)}
+.inputs-row input.highlight{box-shadow:0 0 8px rgba(34,197,94,.3)}
+.inputs-row input[readonly]{cursor:pointer}
+canvas{border-radius:8px;background:rgba(0,0,0,.3);cursor:pointer;display:block}
+.status{text-align:center;margin-top:10px;font-size:13px;color:var(--muted);min-height:20px}
+.result-banner{margin-top:12px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;display:none}
+.result-banner h3{font-size:14px;font-weight:700;color:var(--green);margin-bottom:8px}
+.result-list{display:flex;flex-wrap:wrap;gap:6px}
+.result-item{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--card2)}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="logo"><img src="icon.png" alt="MK">MK
+        <a href="/" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px;margin-left:4px">미션매니저</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/team" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">팀뽑기</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/ladder" style="text-decoration:none;-webkit-text-fill-color:inherit;border-bottom:2px solid var(--green);padding-bottom:1px;margin-left:4px">사다리</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/control" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">지통실</a>
+      </div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>줄 수</label>
+      <button class="ctrl-btn" onclick="changeCount(-1)">−</button>
+      <span class="ctrl-val" id="countVal">3</span>
+      <button class="ctrl-btn" onclick="changeCount(1)">+</button>
+    </div>
+    <button class="action-btn shuffle" onclick="shuffleBottom()">섞기</button>
+    <button class="action-btn start" id="startBtn" onclick="startLadder()">시작</button>
+    <button class="action-btn showall" id="showAllBtn" onclick="showAllResults()" disabled>전체보기</button>
+    <button class="action-btn start" id="retryBtn" onclick="retryLadder()" disabled>다시하기</button>
+    <button class="action-btn reset" onclick="resetAll()">초기화</button>
+  </div>
+
+  <div class="ladder-area">
+    <div class="inputs-row" id="topInputs"></div>
+    <canvas id="ladderCanvas"></canvas>
+    <div class="inputs-row" id="bottomInputs"></div>
+  </div>
+
+  <div class="status" id="status">줄 수와 이름을 설정한 후 [시작]을 눌러주세요</div>
+
+  <div class="result-banner" id="resultBanner">
+    <h3>결과</h3>
+    <div class="result-list" id="resultList"></div>
+  </div>
+</div>
+
+<script>
+// ========== 상태 ==========
+let lineCount = 3;
+let rungs = [];
+let ladderReady = false;
+let isAnimating = false;
+let skipCurrentAnim = false;
+let completedPaths = [];
+let animatedLines = new Set();
+let ladderResults = null;
+let skipAnim = false;
+
+const colors = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#a855f7','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1','#14b8a6','#e11d48','#8b5cf6','#0ea5e9','#d946ef'];
+
+// ========== Canvas 설정 ==========
+const canvas = document.getElementById('ladderCanvas');
+const ctx = canvas.getContext('2d');
+const PAD_X = 50, PAD_TOP = 12, PAD_BOT = 12;
+let canvasW, canvasH, lineSpacing, ladderTop, ladderBot;
+
+function resizeCanvas(){
+  const w = Math.min(960, window.innerWidth - 32);
+  const h = Math.max(280, Math.min(500, lineCount * 30 + 180));
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvasW = w;
+  canvasH = h;
+  lineSpacing = (canvasW - PAD_X * 2) / (lineCount - 1);
+  ladderTop = PAD_TOP;
+  ladderBot = canvasH - PAD_BOT;
+  positionInputs();
+}
+
+function lineX(i){ return PAD_X + i * lineSpacing; }
+
+// ========== 입력칸 생성 ==========
+function buildInputs(){
+  const top = document.getElementById('topInputs');
+  const bot = document.getElementById('bottomInputs');
+  const oldTop = Array.from(top.querySelectorAll('input')).map(i=>i.value);
+  const oldBot = Array.from(bot.querySelectorAll('input')).map(i=>i.value);
+  top.innerHTML = '';
+  bot.innerHTML = '';
+  for(let i = 0; i < lineCount; i++){
+    const idx = i;
+    const ti = document.createElement('input');
+    ti.placeholder = '이름' + (i+1);
+    ti.value = oldTop[i] || '';
+    ti.maxLength = 8;
+    ti.addEventListener('click', () => {
+      if(ladderReady && !animatedLines.has(idx)) clickLine(idx);
+    });
+    top.appendChild(ti);
+    const bi = document.createElement('input');
+    bi.placeholder = '결과' + (i+1);
+    bi.value = oldBot[i] || '';
+    bi.maxLength = 8;
+    bot.appendChild(bi);
+  }
+  positionInputs();
+}
+
+function positionInputs(){
+  if(!canvasW) return;
+  const rows = [document.getElementById('topInputs'), document.getElementById('bottomInputs')];
+  rows.forEach(row => {
+    row.style.width = canvasW + 'px';
+    row.querySelectorAll('input').forEach((inp, i) => {
+      if(i < lineCount) inp.style.left = lineX(i) + 'px';
+    });
+  });
+}
+
+function getTopNames(){
+  return Array.from(document.querySelectorAll('#topInputs input')).map((inp,i)=> inp.value.trim() || ('이름'+(i+1)));
+}
+function getBottomLabels(){
+  return Array.from(document.querySelectorAll('#bottomInputs input')).map((inp,i)=> inp.value.trim() || ('결과'+(i+1)));
+}
+
+// ========== 줄 수 조절 ==========
+function changeCount(d){
+  if(ladderReady) return;
+  lineCount = Math.max(2, Math.min(15, lineCount + d));
+  document.getElementById('countVal').textContent = lineCount;
+  buildInputs();
+  resizeCanvas();
+  drawEmpty();
+}
+
+// ========== 섞기 ==========
+function shuffleBottom(){
+  if(ladderReady) return;
+  const inputs = document.querySelectorAll('#bottomInputs input');
+  const vals = Array.from(inputs).map(i => i.value);
+  for(let i = vals.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [vals[i], vals[j]] = [vals[j], vals[i]];
+  }
+  inputs.forEach((inp,i)=> inp.value = vals[i]);
+}
+
+// ========== 사다리 그리기 ==========
+function drawEmpty(){
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  ctx.globalAlpha = 0.2;
+  for(let i = 0; i < lineCount; i++){
+    const x = lineX(i);
+    ctx.beginPath();
+    ctx.moveTo(x, ladderTop);
+    ctx.lineTo(x, ladderBot);
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function generateRungs(){
+  rungs = [];
+  const segments = lineCount - 1;
+  const totalRows = Math.max(14, lineCount * 4);
+  const rowH = (ladderBot - ladderTop) / (totalRows + 1);
+  const usedSlots = new Set();
+
+  // Phase 1: 각 구간에 최소 3개 가로줄 보장
+  for(let seg = 0; seg < segments; seg++){
+    let placed = 0;
+    let attempts = 0;
+    while(placed < 3 && attempts < 200){
+      attempts++;
+      const row = Math.floor(Math.random() * totalRows) + 1;
+      const key = row + '-' + seg;
+      if(usedSlots.has(key)) continue;
+      if(usedSlots.has(row + '-' + (seg-1)) || usedSlots.has(row + '-' + (seg+1))) continue;
+      const y = ladderTop + row * rowH;
+      rungs.push({ y, from: seg, to: seg + 1 });
+      usedSlots.add(key);
+      placed++;
+    }
+  }
+
+  // Phase 2: 추가 랜덤 가로줄 (구간당 평균 2개 추가)
+  const extraTarget = segments * 2;
+  let attempts = 0, added = 0;
+  while(added < extraTarget && attempts < extraTarget * 20){
+    attempts++;
+    const row = Math.floor(Math.random() * totalRows) + 1;
+    const seg = Math.floor(Math.random() * segments);
+    const key = row + '-' + seg;
+    if(usedSlots.has(key)) continue;
+    if(usedSlots.has(row + '-' + (seg-1)) || usedSlots.has(row + '-' + (seg+1))) continue;
+    const y = ladderTop + row * rowH;
+    rungs.push({ y, from: seg, to: seg + 1 });
+    usedSlots.add(key);
+    added++;
+  }
+
+  rungs.sort((a,b) => a.y - b.y);
+}
+
+function drawLadder(){
+  ctx.clearRect(0, 0, canvasW, canvasH);
+  for(let i = 0; i < lineCount; i++){
+    const x = lineX(i);
+    ctx.beginPath();
+    ctx.moveTo(x, ladderTop);
+    ctx.lineTo(x, ladderBot);
+    ctx.strokeStyle = 'rgba(34,197,94,0.35)';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+  for(const r of rungs){
+    ctx.beginPath();
+    ctx.moveTo(lineX(r.from), r.y);
+    ctx.lineTo(lineX(r.to), r.y);
+    ctx.strokeStyle = 'rgba(34,197,94,0.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+function redrawWithPaths(){
+  drawLadder();
+  for(const cp of completedPaths){
+    drawFullPath(cp.path, cp.color);
+  }
+}
+
+// ========== 경로 계산 ==========
+function calcPath(startLine){
+  let current = startLine;
+  const path = [{ x: lineX(current), y: ladderTop }];
+  const sortedRungs = [...rungs].sort((a,b) => a.y - b.y);
+
+  for(const r of sortedRungs){
+    if(r.from === current){
+      path.push({ x: lineX(current), y: r.y });
+      current = r.to;
+      path.push({ x: lineX(current), y: r.y });
+    } else if(r.to === current){
+      path.push({ x: lineX(current), y: r.y });
+      current = r.from;
+      path.push({ x: lineX(current), y: r.y });
+    }
+  }
+  path.push({ x: lineX(current), y: ladderBot });
+  return { path, endLine: current };
+}
+
+// ========== 애니메이션 ==========
+function drawFullPath(path, color){
+  ctx.save();
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(path[0].x, path[0].y);
+  for(let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.restore();
+  // 시작/끝 마커
+  ctx.beginPath();
+  ctx.arc(path[0].x, path[0].y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(path[path.length-1].x, path[path.length-1].y, 5, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+async function animatePath(startLine, color){
+  const { path, endLine } = calcPath(startLine);
+  if(skipAnim || skipCurrentAnim){
+    completedPaths.push({ path, color });
+    redrawWithPaths();
+    skipCurrentAnim = false;
+    isAnimating = false;
+    return endLine;
+  }
+  isAnimating = true;
+  const speed = Math.max(2, 8 - lineCount * 0.3);
+  for(let i = 1; i < path.length; i++){
+    const from = path[i-1], to = path[i];
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const steps = Math.max(1, Math.round(dist / speed));
+    for(let s = 0; s <= steps; s++){
+      if(skipCurrentAnim){
+        completedPaths.push({ path, color });
+        redrawWithPaths();
+        skipCurrentAnim = false;
+        isAnimating = false;
+        return endLine;
+      }
+      const t = s / steps;
+      const cx = from.x + dx * t;
+      const cy = from.y + dy * t;
+      redrawWithPaths();
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(path[0].x, path[0].y);
+      for(let j = 1; j < i; j++) ctx.lineTo(path[j].x, path[j].y);
+      ctx.lineTo(cx, cy);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      await new Promise(r => setTimeout(r, 8));
+    }
+  }
+  completedPaths.push({ path, color });
+  isAnimating = false;
+  redrawWithPaths();
+  return endLine;
+}
+
+// ========== 클릭 핸들러 ==========
+canvas.addEventListener('click', async (e) => {
+  if(!ladderReady) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvasW / rect.width;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * (canvasH / rect.height);
+
+  if(my < ladderTop + 30){
+    for(let i = 0; i < lineCount; i++){
+      if(Math.abs(mx - lineX(i)) < lineSpacing * 0.4 && !animatedLines.has(i)){
+        await clickLine(i);
+        return;
+      }
+    }
+  }
+});
+
+async function clickLine(idx){
+  if(animatedLines.has(idx)) return;
+  // 진행중인 애니메이션 즉시 완료 처리
+  if(isAnimating) skipCurrentAnim = true;
+  while(isAnimating) await new Promise(r => setTimeout(r, 10));
+  animatedLines.add(idx);
+  const color = colors[idx % colors.length];
+  const endLine = await animatePath(idx, color);
+
+  const topInputs = document.querySelectorAll('#topInputs input');
+  const botInputs = document.querySelectorAll('#bottomInputs input');
+  if(topInputs[idx]){
+    topInputs[idx].classList.add('highlight');
+    topInputs[idx].style.borderColor = color;
+    topInputs[idx].style.boxShadow = `0 0 8px ${color}40`;
+  }
+  if(botInputs[endLine]){
+    botInputs[endLine].classList.add('highlight');
+    botInputs[endLine].style.borderColor = color;
+    botInputs[endLine].style.boxShadow = `0 0 8px ${color}40`;
+  }
+
+  updateResultBanner();
+
+  if(animatedLines.size === lineCount){
+    document.getElementById('status').textContent = '모든 결과가 나왔습니다!';
+    document.getElementById('showAllBtn').disabled = true;
+  }
+}
+
+// ========== 시작 ==========
+function startLadder(){
+  resizeCanvas();
+  generateRungs();
+  ladderReady = true;
+  skipAnim = false;
+  completedPaths = [];
+  animatedLines.clear();
+  ladderResults = {};
+
+  for(let i = 0; i < lineCount; i++){
+    const { endLine } = calcPath(i);
+    ladderResults[i] = endLine;
+  }
+
+  drawLadder();
+  document.getElementById('status').textContent = '위쪽 이름을 클릭하세요!';
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('retryBtn').disabled = false;
+  document.getElementById('showAllBtn').disabled = false;
+  document.getElementById('resultBanner').style.display = 'none';
+  document.getElementById('resultList').innerHTML = '';
+
+  document.querySelectorAll('.inputs-row input').forEach(i => {
+    i.classList.remove('highlight');
+    i.style.borderColor = '';
+    i.style.boxShadow = '';
+    i.readOnly = true;
+  });
+}
+
+// ========== 전체보기 ==========
+async function showAllResults(){
+  if(!ladderReady) return;
+  skipAnim = true;
+  for(let i = 0; i < lineCount; i++){
+    if(!animatedLines.has(i)){
+      animatedLines.add(i);
+      const color = colors[i % colors.length];
+      const { path, endLine } = calcPath(i);
+      completedPaths.push({ path, color });
+
+      const topInputs = document.querySelectorAll('#topInputs input');
+      const botInputs = document.querySelectorAll('#bottomInputs input');
+      if(topInputs[i]){
+        topInputs[i].classList.add('highlight');
+        topInputs[i].style.borderColor = color;
+        topInputs[i].style.boxShadow = `0 0 8px ${color}40`;
+      }
+      if(botInputs[endLine]){
+        botInputs[endLine].classList.add('highlight');
+        botInputs[endLine].style.borderColor = color;
+        botInputs[endLine].style.boxShadow = `0 0 8px ${color}40`;
+      }
+    }
+  }
+  redrawWithPaths();
+  updateResultBanner();
+  document.getElementById('status').textContent = '모든 결과가 나왔습니다!';
+  document.getElementById('showAllBtn').disabled = true;
+}
+
+// ========== 결과 배너 ==========
+function updateResultBanner(){
+  const banner = document.getElementById('resultBanner');
+  const list = document.getElementById('resultList');
+  const names = getTopNames();
+  const labels = getBottomLabels();
+  banner.style.display = 'block';
+  list.innerHTML = '';
+  for(const i of animatedLines){
+    const endLine = ladderResults[i];
+    const color = colors[i % colors.length];
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    item.style.borderColor = color;
+    item.style.color = color;
+    item.textContent = names[i] + ' → ' + labels[endLine];
+    list.appendChild(item);
+  }
+}
+
+// ========== 다시하기 (텍스트 유지, 사다리만 새로) ==========
+function retryLadder(){
+  ladderReady = false;
+  isAnimating = false;
+  skipAnim = false;
+  skipCurrentAnim = false;
+  completedPaths = [];
+  animatedLines.clear();
+  ladderResults = null;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('retryBtn').disabled = true;
+  document.getElementById('showAllBtn').disabled = true;
+  document.getElementById('status').textContent = '줄 수와 이름을 설정한 후 [시작]을 눌러주세요';
+  document.getElementById('resultBanner').style.display = 'none';
+  document.getElementById('resultList').innerHTML = '';
+  document.querySelectorAll('.inputs-row input').forEach(i => {
+    i.classList.remove('highlight');
+    i.style.borderColor = '';
+    i.style.boxShadow = '';
+    i.readOnly = false;
+  });
+  resizeCanvas();
+  drawEmpty();
+}
+
+// ========== 초기화 (텍스트도 전부 비우기) ==========
+function resetAll(){
+  ladderReady = false;
+  isAnimating = false;
+  skipAnim = false;
+  skipCurrentAnim = false;
+  completedPaths = [];
+  animatedLines.clear();
+  ladderResults = null;
+  document.getElementById('startBtn').disabled = false;
+  document.getElementById('retryBtn').disabled = true;
+  document.getElementById('showAllBtn').disabled = true;
+  document.getElementById('status').textContent = '줄 수와 이름을 설정한 후 [시작]을 눌러주세요';
+  document.getElementById('resultBanner').style.display = 'none';
+  document.getElementById('resultList').innerHTML = '';
+  document.querySelectorAll('.inputs-row input').forEach(i => {
+    i.classList.remove('highlight');
+    i.style.borderColor = '';
+    i.style.boxShadow = '';
+    i.readOnly = false;
+    i.value = '';
+  });
+  resizeCanvas();
+  drawEmpty();
+}
+
+// ========== 초기화 실행 ==========
+buildInputs();
+resizeCanvas();
+drawEmpty();
+window.addEventListener('resize', () => {
+  resizeCanvas();
+  if(ladderReady) redrawWithPaths();
+  else drawEmpty();
+});
+</script>
+
+</body>
+</html>

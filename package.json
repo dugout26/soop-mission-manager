@@ -1,15 +1,19 @@
 {
   "name": "soop-mission-manager",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "SOOP 대결미션 매니저",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "googleapis": "^171.4.0"
+    "googleapis": "^171.4.0",
+    "soop-extension": "^1.3.1"
   }
 }

@@ -11,14 +11,14 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(74,222,128,.04)1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,.04)1px,transparent 1px);background-size:40px 40px;pointer-events:none}
-.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:16px}
+.app{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:16px}
 
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
 .logo{font-family:'Black Han Sans';font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
 .logo img{width:32px;height:32px;border-radius:6px}
 .logo-sub{font-size:10px;color:var(--muted)}
 
-.conn{display:flex;align-items:center;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-size:11px;flex-wrap:wrap}
+.conn{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;flex-wrap:wrap}
 .dot{width:8px;height:8px;border-radius:50%}
 .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
 .dot.wait{background:var(--orange);animation:p 1s infinite}
@@ -28,48 +28,48 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 .ci:focus{outline:none;border-color:var(--blue)}
 .cb{padding:4px 10px;border-radius:4px;border:1px solid var(--blue);background:rgba(74,222,128,.1);color:var(--blue);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit}
 
-.stats{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
-.st{flex:1;min-width:100px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
-.st-l{font-size:9px;color:var(--muted);font-weight:600}
-.st-v{font-size:18px;font-weight:900;margin-top:1px}
+.stats{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.st{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px}
+.st-l{font-size:11px;color:var(--muted);font-weight:600}
+.st-v{font-size:28px;font-weight:900;margin-top:2px}
 
-.sec{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
-.sec h2{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.sec h2 .sub{font-size:10px;color:var(--muted);font-weight:400}
+.sec{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:16px}
+.sec h2{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.sec h2 .sub{font-size:11px;color:var(--muted);font-weight:400}
 
 /* 자동등록 임계값 */
-.auto-box{display:flex;align-items:center;gap:8px;padding:10px 14px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:8px;margin-bottom:12px;flex-wrap:wrap}
-.auto-box label{font-size:11px;font-weight:700;color:var(--yellow)}
-.auto-box input{padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;width:80px;font-family:inherit;text-align:center}
+.auto-box{display:flex;align-items:center;gap:10px;padding:14px 18px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);border-radius:8px;margin-bottom:14px;flex-wrap:wrap}
+.auto-box label{font-size:13px;font-weight:700;color:var(--yellow)}
+.auto-box input{padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;width:90px;font-family:inherit;text-align:center}
 .auto-box input:focus{outline:none;border-color:var(--yellow)}
-.auto-box .desc{font-size:9px;color:var(--muted)}
-.auto-box button{padding:4px 10px;border-radius:4px;border:1px solid var(--yellow);background:rgba(234,179,8,.1);color:var(--yellow);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit}
+.auto-box .desc{font-size:10px;color:var(--muted)}
+.auto-box button{padding:6px 14px;border-radius:4px;border:1px solid var(--yellow);background:rgba(234,179,8,.1);color:var(--yellow);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
 
 /* 미션 등록 */
-.tpl-form{display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap}
-.fg{display:flex;flex-direction:column;gap:2px}
-.fg label{font-size:8px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
-.fg input,.fg select{padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-family:inherit}
+.tpl-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.fg input,.fg select{padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;font-family:inherit}
 .fg input:focus{outline:none;border-color:var(--blue)}
-.chk-group{display:flex;gap:10px;align-items:center}
-.chk-group label{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);cursor:pointer;user-select:none}
-.chk-group input[type=checkbox]{accent-color:var(--blue);width:14px;height:14px}
-.btn-add{padding:6px 14px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:4px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
+.chk-group{display:flex;gap:12px;align-items:center}
+.chk-group label{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--text2);cursor:pointer;user-select:none}
+.chk-group input[type=checkbox]{accent-color:var(--blue);width:16px;height:16px}
+.btn-add{padding:8px 20px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:6px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap}
 
 /* 등록된 템플릿 */
-.tpl-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.tpl-card{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:10px;position:relative}
+.tpl-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.tpl-card{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;position:relative}
 .tpl-card.inactive{opacity:.35}
 .tpl-card.editing{border-color:var(--blue)}
-.tpl-star{font-size:16px;font-weight:900;color:var(--orange);font-family:'Black Han Sans';white-space:nowrap}
-.tpl-name{font-size:12px;font-weight:700}
-.tpl-tags{display:flex;gap:3px;margin-top:2px}
-.tpl-tag{font-size:8px;padding:1px 5px;border-radius:2px;font-weight:600}
+.tpl-star{font-size:22px;font-weight:900;color:var(--orange);font-family:'Black Han Sans';white-space:nowrap}
+.tpl-name{font-size:15px;font-weight:700}
+.tpl-tags{display:flex;gap:5px;margin-top:4px}
+.tpl-tag{font-size:11px;padding:3px 7px;border-radius:4px;font-weight:600}
 .tpl-tag.domain{background:rgba(59,130,246,.12);color:var(--blue)}
 .tpl-tag.msg{background:rgba(249,115,22,.12);color:var(--orange)}
-.tpl-cond{font-size:9px;color:var(--cyan);margin-top:1px}
-.tpl-actions{margin-left:auto;display:flex;gap:3px}
-.tpl-btn{padding:3px 6px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:9px;cursor:pointer;font-family:inherit}
+.tpl-cond{font-size:11px;color:var(--cyan);margin-top:2px}
+.tpl-actions{margin-left:auto;display:flex;gap:4px}
+.tpl-btn{padding:5px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit}
 .tpl-btn:hover{border-color:var(--muted)}
 .tpl-btn.del{color:var(--red);border-color:rgba(239,68,68,.3)}
 .tpl-btn.edit{color:var(--blue);border-color:rgba(59,130,246,.3)}
@@ -83,44 +83,45 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 .edit-inline .cancel{background:var(--border);color:var(--text2)}
 
 /* 결과 */
-.filters{display:flex;gap:3px;margin-bottom:8px}
-.ft{padding:3px 8px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:9px;font-weight:600;cursor:pointer;font-family:inherit}
+.filters{display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap}
+.ft{padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
 .ft.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 
-.results{display:flex;flex-direction:column;gap:4px}
-.r-card{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden;transition:all .15s}
+.results{display:flex;flex-direction:column;gap:8px}
+.r-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden;transition:all .15s}
 .r-card:hover{border-color:var(--muted)}
 .r-card.done{background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.15)}
 .r-card.done .r-info *{text-decoration:line-through;opacity:.35}
 
-.r-badge{padding:3px 7px;border-radius:3px;font-size:9px;font-weight:800;white-space:nowrap;letter-spacing:.3px}
+.r-badge{padding:6px 14px;border-radius:6px;font-size:15px;font-weight:800;white-space:nowrap;letter-spacing:.3px}
 .r-badge.balloon{background:rgba(74,222,128,.1);color:var(--blue)}
 .r-badge.adballoon{background:rgba(168,85,247,.1);color:var(--purple)}
 .r-badge.video{background:rgba(6,182,212,.1);color:var(--cyan)}
 .r-badge.mission{background:rgba(234,179,8,.1);color:var(--yellow);border:1px solid rgba(234,179,8,.3)}
+.r-badge.challenge{background:rgba(251,146,60,.1);color:var(--orange);border:1px solid rgba(251,146,60,.3)}
 .r-badge.auto{background:rgba(234,179,8,.1);color:var(--yellow)}
 
 .r-info{flex:1;min-width:0}
-.r-user{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.r-user .tag{font-size:7px;padding:1px 4px;border-radius:2px;font-weight:600}
+.r-user{font-size:18px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.r-user .tag{font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600}
 .r-user .tag.auto{background:rgba(34,197,94,.15);color:var(--green)}
 .r-user .tag.thresh{background:rgba(234,179,8,.15);color:var(--yellow)}
-.r-msg{font-size:13px;color:var(--orange);font-weight:800;max-width:350px;overflow:hidden;text-overflow:ellipsis}
-.r-detail{font-size:10px;color:var(--text2);margin-top:2px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.r-link{color:var(--blue);text-decoration:none;font-weight:600;font-size:10px}
+.r-msg{font-size:18px;color:var(--orange);font-weight:800;max-width:500px;overflow:hidden;text-overflow:ellipsis}
+.r-detail{font-size:12px;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.r-link{color:var(--blue);text-decoration:none;font-weight:600;font-size:12px}
 .r-link:hover{text-decoration:underline}
-.r-memo{padding:2px 5px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:10px;width:180px;font-family:inherit}
+.r-memo{padding:4px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:14px;width:220px;font-family:inherit}
 .r-memo:focus{outline:none;border-color:var(--orange)}
-.r-time{font-size:8px;color:var(--muted);white-space:nowrap}
+.r-time{font-size:13px;color:var(--muted);white-space:nowrap}
 .r-acts{display:flex;gap:3px}
-.rb{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:9px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
+.rb{padding:6px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
 .rb:hover{border-color:var(--muted);color:var(--text)}
 .rb.go{border-color:var(--blue);color:var(--blue)}
 .rb.ok{border-color:var(--green);color:var(--green)}
 .rb.undo{border-color:var(--orange);color:var(--orange)}
 .rb.del{border-color:var(--red);color:var(--red);padding:4px 6px}
 
-.stamp{display:none;position:absolute;right:50px;top:50%;transform:translateY(-50%) rotate(-12deg);border:2px solid var(--red);color:var(--red);font-family:'Black Han Sans';font-size:16px;padding:1px 12px;border-radius:3px;letter-spacing:2px;opacity:.45;pointer-events:none}
+.stamp{display:none;position:absolute;right:50px;top:50%;transform:translateY(-50%) rotate(-12deg);border:2px solid var(--red);color:var(--red);font-family:'Black Han Sans';font-size:20px;padding:2px 14px;border-radius:4px;letter-spacing:2px;opacity:.45;pointer-events:none}
 .r-card.done .stamp{display:block}
 
 /* 로그 */
@@ -133,17 +134,38 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 .be .t{color:var(--muted);margin-left:auto;font-size:8px}
 .be .tp{font-size:8px;padding:1px 4px;border-radius:2px;font-weight:600}
 
-.empty{text-align:center;padding:24px 14px;color:var(--muted);font-size:11px}
-.empty .icon{font-size:28px;margin-bottom:4px}
+.empty{text-align:center;padding:28px 16px;color:var(--muted);font-size:13px}
+.empty .icon{font-size:36px;margin-bottom:6px}
+
+/* 롤 계정 */
+.lol-card{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--card2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .12s;text-decoration:none;margin-bottom:4px}
+.lol-card:hover{border-color:var(--blue);background:rgba(74,222,128,.05)}
+.lol-card .tier-badge{font-size:11px;font-weight:800;padding:3px 8px;border-radius:4px;white-space:nowrap}
+.lol-card .tier-badge.MASTER{background:rgba(168,85,247,.15);color:#a855f7}
+.lol-card .tier-badge.GRANDMASTER{background:rgba(239,68,68,.15);color:#ef4444}
+.lol-card .tier-badge.CHALLENGER{background:rgba(234,179,8,.15);color:#eab308}
+.lol-card .tier-badge.DIAMOND{background:rgba(96,165,250,.15);color:#60a5fa}
+.lol-card .tier-badge.EMERALD{background:rgba(52,211,153,.15);color:#34d399}
+.lol-card .tier-badge.PLATINUM{background:rgba(45,212,191,.15);color:#2dd4bf}
+.lol-card .tier-badge.GOLD{background:rgba(251,191,36,.15);color:#fbbf24}
+.lol-card .tier-badge.SILVER{background:rgba(148,163,184,.15);color:#94a3b8}
+.lol-card .tier-badge.BRONZE{background:rgba(180,83,9,.15);color:#cd7c2f}
+.lol-card .tier-badge.IRON{background:rgba(120,113,108,.15);color:#78716c}
+.lol-card .tier-badge.unranked{background:rgba(100,116,139,.15);color:#64748b}
+.lol-card .riot-id{font-size:14px;font-weight:700;color:var(--text)}
+.lol-card .riot-tag{font-size:11px;color:var(--muted);font-weight:600}
+.lol-card .lp{font-size:11px;color:var(--text2);font-weight:600}
+.lol-card .fow-go{margin-left:auto;font-size:10px;color:var(--muted);white-space:nowrap}
 
 /* 타입 칩 버튼 */
-.type-chips{display:flex;gap:3px}
-.tc{padding:4px 8px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap}
+.type-chips{display:flex;gap:4px}
+.tc{padding:5px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s;white-space:nowrap}
 .tc:hover{border-color:var(--muted);color:var(--text2)}
 .tc.active{background:rgba(74,222,128,.15);border-color:var(--blue);color:var(--blue)}
 .tc[data-val="mission"].active{background:rgba(234,179,8,.15);border-color:var(--yellow);color:var(--yellow)}
 .tc[data-val="balloon"].active{background:rgba(74,222,128,.15);border-color:var(--blue);color:var(--blue)}
 .tc[data-val="adballoon"].active{background:rgba(134,239,172,.15);border-color:var(--purple);color:var(--purple)}
+.tc[data-val="challenge"].active{background:rgba(251,146,60,.15);border-color:var(--orange);color:var(--orange)}
 
 @media(max-width:768px){.header{flex-direction:column}.stats .st{min-width:calc(50% - 3px)}.tpl-form{flex-direction:column}.r-card{flex-wrap:wrap}}
 </style>
@@ -163,7 +185,17 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 
 <div class="app" id="mainApp" style="display:none">
   <div class="header">
-    <div><div class="logo"><img src="icon.png" alt="MK">MK 대결미션 매니저</div><div class="logo-sub">SOOP 별풍선 자동감지 · v4.0 · phonics1</div></div>
+    <div>
+      <div class="logo"><img src="icon.png" alt="MK">MK
+        <a href="/" style="text-decoration:none;-webkit-text-fill-color:inherit;border-bottom:2px solid var(--green);padding-bottom:1px;margin-left:4px">미션매니저</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/team" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">팀뽑기</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/ladder" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">사다리</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/control" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">지통실</a>
+      </div>
+    </div>
     <div class="conn">
       <div class="dot off" id="dot"></div>
       <span id="connTxt">연결 안됨</span>
@@ -171,6 +203,16 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
       <button class="cb" onclick="setStreamer()">연결</button>
       <button class="cb" onclick="doReconnect()">🔄</button>
       <button class="cb" onclick="changePw()" style="border-color:var(--muted);color:var(--muted)">🔑</button>
+      <div style="position:relative;display:inline-block">
+        <button class="cb" id="lolBtn" onclick="toggleLolPanel()" style="border-color:var(--cyan);color:var(--cyan)">🎮 전적</button>
+        <div id="lolPanel" style="display:none;position:absolute;right:0;top:110%;width:320px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+          <div style="display:flex;gap:4px;margin-bottom:8px">
+            <input id="lolName" placeholder="스트리머명 (예: 김민교)" style="flex:1;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;font-family:inherit">
+            <button onclick="searchLol()" style="padding:6px 10px;border-radius:4px;border:1px solid var(--blue);background:transparent;color:var(--blue);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">검색</button>
+          </div>
+          <div id="lolList" style="max-height:300px;overflow-y:auto"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -178,7 +220,6 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     <div class="st"><div class="st-l">전체</div><div class="st-v" style="color:var(--blue)" id="s1">0</div></div>
     <div class="st"><div class="st-l">진행중</div><div class="st-v" style="color:var(--orange)" id="s2">0</div></div>
     <div class="st"><div class="st-l">완료</div><div class="st-v" style="color:var(--green)" id="s3">0</div></div>
-    <div class="st"><div class="st-l">대기(역팬)</div><div class="st-v" style="color:var(--red)" id="s4">0</div></div>
   </div>
 
   <!-- 미션 등록 -->
@@ -198,7 +239,6 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     <!-- 등록 폼 -->
     <div class="tpl-form">
       <div class="fg"><label>미션 이름</label><input id="tName" placeholder="역팬, 방셀 등" style="width:100px"></div>
-      <div class="fg"><label>카테고리</label><input id="tCategory" placeholder="역팬1, 역팬2, 방셀 등" style="width:100px"></div>
       <div class="fg"><label>개수 (정확히)</label><input id="tCount" type="number" value="500" style="width:80px"></div>
       <div class="fg"><label>타입</label>
         <div class="type-chips" id="tTypeChips">
@@ -206,6 +246,7 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
           <button class="tc" data-val="balloon" onclick="pickType(this)">⭐별풍</button>
           <button class="tc" data-val="adballoon" onclick="pickType(this)">🎈애드</button>
           <button class="tc" data-val="mission" onclick="pickType(this)">⚔대결</button>
+          <button class="tc" data-val="challenge" onclick="pickType(this)">🎯도전</button>
         </div>
       </div>
       <div class="chk-group">
@@ -228,13 +269,13 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
       <span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span>
       <button class="ft type-ft" onclick="setTF('all',this)" style="border-color:rgba(74,222,128,.3);color:var(--blue)">모든타입</button>
       <button class="ft type-ft" onclick="setTF('mission',this)" style="border-color:rgba(234,179,8,.3);color:var(--yellow)">대결미션</button>
+      <button class="ft type-ft" onclick="setTF('challenge',this)" style="border-color:rgba(251,146,60,.3);color:var(--orange)">도전미션</button>
       <button class="ft type-ft" onclick="setTF('balloon',this)" style="border-color:rgba(74,222,128,.3);color:var(--blue)">별풍선</button>
       <button class="ft type-ft" onclick="setTF('adballoon',this)" style="border-color:rgba(134,239,172,.3);color:var(--purple)">애드벌룬</button>
       <span style="width:1px;height:16px;background:var(--border);margin:0 4px"></span>
-      <div id="categoryFilters" style="display:flex;gap:3px;flex-wrap:wrap">
-        <button class="ft category-ft" onclick="setCF('전체',this)" style="border-color:rgba(110,231,183,.3);color:var(--cyan)">전체</button>
-      </div>
+      <span id="missionFilters"></span>
       <button class="ft" id="sheetBtn" style="margin-left:auto;border-color:rgba(74,222,128,.3);color:var(--blue)" onclick="exportSheets()">📊 구글시트</button>
+      <button class="ft" style="border-color:rgba(110,231,183,.3);color:var(--cyan)" onclick="exportCSV()">📄 CSV</button>
       <button class="ft" style="border-color:rgba(239,68,68,.3);color:var(--red)" onclick="resetResults()">🗑 초기화</button>
     </div>
     <div class="results" id="resList">
@@ -242,47 +283,51 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
     </div>
   </div>
 
-  <!-- 로그 -->
-  <div class="sec">
-    <h2>⭐ 실시간 로그</h2>
-    <div class="blog" id="bLog"><div class="empty" style="padding:12px"><div class="icon">⏳</div>대기 중...</div></div>
-  </div>
+  <div id="bLog" style="display:none"></div>
 
 </div>
 
 <script>
-let templates=[], results=[], filter='all', typeFilter='all', categoryFilter='전체', autoThreshold=0, es=null, editingId=null;
-let authToken=sessionStorage.getItem('mk_token')||'';
-let availableCategories=new Set(['일반']);
+let templates=[], results=[], filter='all', typeFilter='all', missionFilter='all', autoThreshold=0, es=null, editingId=null;
 
-// 인증
+// 인증 (쿠키 기반 — 서버가 Set-Cookie로 관리)
 async function doLogin(){
   const pw=document.getElementById('loginPw').value;
   if(!pw){document.getElementById('loginErr').textContent='비밀번호를 입력하세요';return}
   try{
-    const r=await fetch('/api/auth',{method:'POST',headers:authHeaders(),body:JSON.stringify({password:pw})});
+    const r=await fetch('/api/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})});
     const d=await r.json();
-    if(d.ok){authToken=d.token;sessionStorage.setItem('mk_token',authToken);showMain()}
+    if(d.ok){showMain()}
     else{document.getElementById('loginErr').textContent=d.error||'틀렸습니다'}
   }catch(e){document.getElementById('loginErr').textContent='서버 연결 실패'}
 }
 function showMain(){document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='block';loadCfg();connectSSE()}
-function authHeaders(){return{'Content-Type':'application/json','X-Auth':authToken}}
+function showLogin(msg){document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';if(msg)document.getElementById('loginErr').textContent=msg;}
 
 // 비밀번호 변경
 async function changePw(){
   const np=prompt('새 비밀번호 (4자 이상):');
   if(!np||np.length<4){if(np!==null)alert('4자 이상 입력해주세요');return}
-  const r=await fetch('/api/change-password',{method:'POST',headers:authHeaders(),body:JSON.stringify({newPassword:np})});
+  const r=await authFetch('/api/change-password',{method:'POST',body:JSON.stringify({newPassword:np})});
   const d=await r.json();
-  if(d.ok){authToken=d.token;sessionStorage.setItem('mk_token',authToken);alert('비밀번호가 변경되었습니다')}
+  if(d.ok){alert('비밀번호가 변경되었습니다')}
   else{alert(d.error||'변경 실패')}
 }
 
 document.getElementById('loginPw').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 
-// 이전 토큰으로 자동 로그인 시도
-if(authToken){fetch('/api/config',{headers:{'X-Auth':authToken}}).then(r=>{if(r.ok)showMain();else{sessionStorage.removeItem('mk_token');authToken=''}}).catch(()=>{});}
+// 쿠키로 자동 로그인 (쿠키는 브라우저가 자동 전송)
+fetch('/api/verify').then(r=>{if(r.ok)showMain()}).catch(()=>{});
+
+// 401 발생 시 재로그인
+function authFetch(url,opts={}){
+  if(!opts.headers) opts.headers={};
+  opts.headers['Content-Type']='application/json';
+  return fetch(url,opts).then(r=>{
+    if(r.status===401){showLogin('세션이 만료되었습니다. 다시 로그인해주세요');}
+    return r;
+  });
+}
 
 
 function connectSSE(){
@@ -291,7 +336,7 @@ function connectSSE(){
   es.addEventListener('status',e=>{const d=JSON.parse(e.data);updConn(d.status,d.streamerId,d.error)});
   es.addEventListener('templates',e=>{templates=JSON.parse(e.data);renderTpl()});
   es.addEventListener('autoThreshold',e=>{autoThreshold=JSON.parse(e.data).value;updAutoDesc()});
-  es.addEventListener('result',e=>{const r=JSON.parse(e.data);if(!results.find(x=>x.id===r.id)){results.unshift(r);renderRes();updStats();playSound()}});
+  es.addEventListener('result',e=>{const r=JSON.parse(e.data);if(!results.find(x=>x.id===r.id)){results.unshift(r);renderRes();updStats()}});
   es.addEventListener('resultUpdate',e=>{const r=JSON.parse(e.data);const i=results.findIndex(x=>x.id===r.id);if(i>=0)results[i]=r;renderRes();updStats()});
   es.addEventListener('resultDelete',e=>{results=results.filter(r=>r.id!==JSON.parse(e.data).id);renderRes();updStats()});
   es.addEventListener('resetResults',()=>{results=[];renderRes();updStats()});
@@ -312,13 +357,13 @@ function updConn(s,id,err){
   else{d.classList.add('off');t.textContent='연결 안됨'}
 }
 
-async function setStreamer(){const id=document.getElementById('sInput').value.trim();if(!id)return;await fetch('/api/config',{method:'POST',headers:authHeaders(),body:JSON.stringify({streamerId:id})})}
-async function doReconnect(){await fetch('/api/reconnect',{method:'POST'})}
+async function setStreamer(){const id=document.getElementById('sInput').value.trim();if(!id)return;await authFetch('/api/config',{method:'POST',body:JSON.stringify({streamerId:id})})}
+async function doReconnect(){await authFetch('/api/reconnect',{method:'POST'})}
 
 // 자동등록 임계값
 async function setAutoThreshold(){
   const v=parseInt(document.getElementById('autoVal').value)||0;
-  await fetch('/api/auto-threshold',{method:'POST',headers:authHeaders(),body:JSON.stringify({value:v})});
+  await authFetch('/api/auto-threshold',{method:'POST',body:JSON.stringify({value:v})});
 }
 function updAutoDesc(){
   document.getElementById('autoVal').value=autoThreshold;
@@ -336,35 +381,31 @@ function pickType(btn){
 // 템플릿
 async function addTemplate(){
   const name=document.getElementById('tName').value.trim()||'미션';
-  const category=document.getElementById('tCategory').value.trim()||'일반';
   const starCount=parseInt(document.getElementById('tCount').value)||500;
   const eventType=selectedType;
   const collectDomain=document.getElementById('tDomain').checked;
   const collectMessage=document.getElementById('tMsg').checked;
-  await fetch('/api/templates',{method:'POST',headers:authHeaders(),body:JSON.stringify({name,category,starCount,eventType,collectDomain,collectMessage})});
+  await authFetch('/api/templates',{method:'POST',body:JSON.stringify({name,starCount,eventType,collectDomain,collectMessage})});
   document.getElementById('tName').value='';
-  document.getElementById('tCategory').value='';
 }
 
 function renderTpl(){
+  updateMissionFilters();
   const el=document.getElementById('tplList');
   if(!templates.length){el.innerHTML='<div class="empty" style="padding:12px;width:100%"><div class="icon">📋</div>미션을 등록해주세요!</div>';return}
   el.innerHTML=templates.map(t=>{
-    // 카테고리를 availableCategories에 추가
-    if(t.category) availableCategories.add(t.category);
-
     if(editingId===t.id){
       const et=t.eventType||'all';
       return`<div class="tpl-card editing">
         <div class="edit-inline">
           <input id="eName" value="${t.name}" style="width:80px" placeholder="이름">
-          <input id="eCategory" value="${t.category||'일반'}" style="width:80px" placeholder="카테고리">
           <input id="eCount" type="number" value="${t.starCount}" style="width:70px">
           <div class="type-chips" id="eTypeChips">
             <button class="tc ${et==='all'?'active':''}" data-val="all" onclick="pickEditType(this)">전체</button>
             <button class="tc ${et==='balloon'?'active':''}" data-val="balloon" onclick="pickEditType(this)">⭐별풍</button>
             <button class="tc ${et==='adballoon'?'active':''}" data-val="adballoon" onclick="pickEditType(this)">🎈애드</button>
             <button class="tc ${et==='mission'?'active':''}" data-val="mission" onclick="pickEditType(this)">⚔대결</button>
+            <button class="tc ${et==='challenge'?'active':''}" data-val="challenge" onclick="pickEditType(this)">🎯도전</button>
           </div>
           <label style="font-size:10px;color:var(--text2);display:flex;align-items:center;gap:3px"><input type="checkbox" id="eDomain" ${t.collectDomain?'checked':''} style="width:12px;height:12px">🔗</label>
           <label style="font-size:10px;color:var(--text2);display:flex;align-items:center;gap:3px"><input type="checkbox" id="eMsg" ${t.collectMessage?'checked':''} style="width:12px;height:12px">💬</label>
@@ -376,11 +417,10 @@ function renderTpl(){
     return`<div class="tpl-card ${t.active?'':'inactive'}">
       <div class="tpl-star">⭐${t.starCount}</div>
       <div>
-        <div class="tpl-name">${t.name} <span style="font-size:9px;color:var(--muted)">[${t.category||'일반'}]</span></div>
-        <div class="tpl-cond">${t.starCount}개 · ${({all:'전체',balloon:'별풍선',adballoon:'애드벌룬',mission:'대결미션'})[t.eventType||'all']}</div>
+        <div class="tpl-name">${t.name}</div>
+        <div class="tpl-cond">${t.starCount}개 · ${({all:'전체',balloon:'별풍선',adballoon:'애드벌룬',mission:'대결미션',challenge:'도전미션'})[t.eventType||'all']}</div>
         <div class="tpl-tags">
-          <span class="tpl-tag" style="background:rgba(74,222,128,.12);color:var(--blue)">${({all:'전체',balloon:'⭐별풍',adballoon:'🎈애드',mission:'⚔대결'})[t.eventType||'all']}</span>
-          <span class="tpl-tag" style="background:rgba(110,231,183,.12);color:var(--cyan)">${t.category||'일반'}</span>
+          <span class="tpl-tag" style="background:rgba(74,222,128,.12);color:var(--blue)">${({all:'전체',balloon:'⭐별풍',adballoon:'🎈애드',mission:'⚔대결',challenge:'🎯도전'})[t.eventType||'all']}</span>
           ${t.collectDomain?'<span class="tpl-tag domain">🔗도메인</span>':''}
           ${t.collectMessage?'<span class="tpl-tag msg">💬메시지</span>':''}
         </div>
@@ -392,7 +432,6 @@ function renderTpl(){
       </div>
     </div>`;
   }).join('');
-  updateCategoryFilters();
 }
 
 let editType='all';
@@ -404,62 +443,49 @@ function pickEditType(btn){
 function startEdit(id){editingId=id;const t=templates.find(x=>x.id===id);editType=t?.eventType||'all';renderTpl()}
 async function saveEdit(id){
   const name=document.getElementById('eName').value.trim();
-  const category=document.getElementById('eCategory').value.trim()||'일반';
   const starCount=parseInt(document.getElementById('eCount').value);
   const eventType=editType;
   const collectDomain=document.getElementById('eDomain').checked;
   const collectMessage=document.getElementById('eMsg').checked;
-  await fetch('/api/templates/update',{method:'POST',headers:authHeaders(),body:JSON.stringify({id,name,category,starCount,eventType,collectDomain,collectMessage})});
+  await authFetch('/api/templates/update',{method:'POST',body:JSON.stringify({id,name,starCount,eventType,collectDomain,collectMessage})});
   editingId=null;
 }
-async function toggleTpl(id){await fetch('/api/templates/toggle',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
-async function delTpl(id){if(!confirm('삭제?'))return;await fetch('/api/templates/delete',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
-
-// 카테고리 필터 업데이트
-function updateCategoryFilters(){
-  // results에서도 카테고리 수집
-  results.forEach(r=>{
-    if(r.category) availableCategories.add(r.category);
-  });
-
-  const el=document.getElementById('categoryFilters');
-  const categories=Array.from(availableCategories).sort();
-  el.innerHTML=`<button class="ft category-ft ${categoryFilter==='전체'?'active':''}" onclick="setCF('전체',this)" style="border-color:rgba(110,231,183,.3);color:var(--cyan)">전체</button>` +
-    categories.map(cat=>`<button class="ft category-ft ${categoryFilter===cat?'active':''}" onclick="setCF('${cat}',this)" style="border-color:rgba(110,231,183,.3);color:var(--cyan)">${cat}</button>`).join('');
-}
-
-// 카테고리 필터 설정
-function setCF(category,btn){
-  categoryFilter=category;
-  document.querySelectorAll('.category-ft').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
-  renderRes();
-}
+async function toggleTpl(id){await authFetch('/api/templates/toggle',{method:'POST',body:JSON.stringify({id})})}
+async function delTpl(id){if(!confirm('삭제?'))return;await authFetch('/api/templates/delete',{method:'POST',body:JSON.stringify({id})})}
 
 // 결과
+function updateMissionFilters(){
+  const fromResults=[...new Set(results.map(r=>r.templateName).filter(Boolean))];
+  const fromTemplates=templates.filter(t=>t.active).map(t=>t.name);
+  const names=[...new Set([...fromTemplates,...fromResults])];
+  const el=document.getElementById('missionFilters');
+  if(!names.length){el.innerHTML='';return}
+  el.innerHTML='<button class="ft mission-ft'+(missionFilter==='all'?' active':'')+'" onclick="setMF(\'all\',this)">전체미션</button>'+
+    names.map(n=>'<button class="ft mission-ft'+(missionFilter===n?' active':'')+'" onclick="setMF(\''+n.replace(/'/g,"\\'")+'\',this)">'+n+'</button>').join('');
+}
 function renderRes(){
+  updateMissionFilters();
   const el=document.getElementById('resList');
   let list=results;
   if(filter==='pending')list=list.filter(r=>!r.completed);
   else if(filter==='done')list=list.filter(r=>r.completed);
   if(typeFilter!=='all')list=list.filter(r=>(r.eventType||'balloon')===typeFilter);
-  if(categoryFilter!=='전체')list=list.filter(r=>(r.category||'일반')===categoryFilter);
+  if(missionFilter!=='all')list=list.filter(r=>r.templateName===missionFilter);
   if(!list.length){el.innerHTML='<div class="empty"><div class="icon">🎮</div>미션을 기다리는 중...</div>';return}
   el.innerHTML=list.map(r=>{
     const et=r.eventType||'balloon';
     const isAuto=r.isAutoThreshold;
     const badgeClass=isAuto?'auto':et;
     const linkBtn=r.channelUrl&&!r.completed?`<a href="${r.channelUrl}" target="_blank" class="rb go">방송국→</a>`:'';
-    const memoField=r.collectMessage?`<input class="r-memo" value="${r.message||''}" placeholder="메모..." onchange="updMemo(${r.id},this.value)" onclick="event.stopPropagation()">`:'';
     const tagHtml=isAuto?'<span class="tag thresh">자동등록</span>':'<span class="tag auto">매칭</span>';
-    const categoryTag=`<span class="tag" style="background:rgba(110,231,183,.15);color:var(--cyan)">${r.category||'일반'}</span>`;
     const msgDisplay=r.message?`<span class="r-msg">"${r.message}"</span>`:'';
-    const memoLine=r.collectMessage&&!r.message?`<div class="r-detail">${memoField}</div>`:'';
+    const editBtn=r.collectMessage&&r.message?`<button class="rb edit-memo" onclick="event.stopPropagation();startMemoEdit(${r.id})">✏️</button>`:'';
+    const memoInput=r.collectMessage&&!r.message?`<div class="r-detail"><input class="r-memo" data-rid="${r.id}" value="" placeholder="메모..." onclick="event.stopPropagation()"></div>`:'';
     return`<div class="r-card ${r.completed?'done':''}">
       <span class="r-badge ${badgeClass}">⭐${r.amount} ${r.templateName}</span>
       <div class="r-info">
-        <div class="r-user">${r.userNickname||r.userId||'?'} ${msgDisplay} ${categoryTag} ${tagHtml}</div>
-        ${memoLine}
+        <div class="r-user">${r.userNickname||r.userId||'?'} ${msgDisplay} ${editBtn} ${tagHtml}</div>
+        ${memoInput}
       </div>
       <div class="stamp">완료</div>
       <div class="r-time">${r.createdAt}</div>
@@ -470,23 +496,38 @@ function renderRes(){
       </div>
     </div>`
   }).join('');
-  updateCategoryFilters();
 }
 
 function setF(f,btn){filter=f;document.querySelectorAll('.ft:not(.type-ft)').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderRes()}
 function setTF(f,btn){typeFilter=f;document.querySelectorAll('.type-ft').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderRes()}
+function setMF(f,btn){missionFilter=f;document.querySelectorAll('.mission-ft').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderRes()}
 function updStats(){
   const t=results.length,d=results.filter(r=>r.completed).length;
   document.getElementById('s1').textContent=t;
   document.getElementById('s2').textContent=t-d;
   document.getElementById('s3').textContent=d;
-  document.getElementById('s4').textContent=results.filter(r=>r.collectDomain&&!r.completed).length;
 }
 
-async function toggleRes(id){await fetch('/api/results/toggle',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
-async function delRes(id){await fetch('/api/results/delete',{method:'POST',headers:authHeaders(),body:JSON.stringify({id})})}
-async function updMemo(id,message){await fetch('/api/results/memo',{method:'POST',headers:authHeaders(),body:JSON.stringify({id,message})})}
-async function resetResults(){if(confirm('전체 초기화?'))await fetch('/api/results/reset',{method:'POST'})}
+async function toggleRes(id){await authFetch('/api/results/toggle',{method:'POST',body:JSON.stringify({id})})}
+async function delRes(id){await authFetch('/api/results/delete',{method:'POST',body:JSON.stringify({id})})}
+async function updMemo(id,message){
+  const r=results.find(x=>x.id===id);if(r)r.message=message;
+  renderRes();
+  await authFetch('/api/results/memo',{method:'POST',body:JSON.stringify({id,message})});
+}
+function startMemoEdit(id){
+  const r=results.find(x=>x.id===id);if(!r)return;
+  const card=document.querySelector(`.r-memo-editing[data-rid="${id}"]`);
+  if(card)return;
+  const userDiv=event.target.closest('.r-info');
+  if(!userDiv)return;
+  let detail=userDiv.querySelector('.r-detail');
+  if(!detail){detail=document.createElement('div');detail.className='r-detail';userDiv.appendChild(detail);}
+  detail.innerHTML=`<input class="r-memo r-memo-editing" data-rid="${id}" value="${(r.message||'').replace(/"/g,'&quot;')}" placeholder="메모 수정..." onclick="event.stopPropagation()">`;
+  const inp=detail.querySelector('input');
+  inp.focus();inp.select();
+}
+async function resetResults(){if(confirm('전체 초기화?'))await authFetch('/api/results/reset',{method:'POST'})}
 
 // Google Sheets 추출 (직접 API)
 async function exportSheets(){
@@ -494,12 +535,7 @@ async function exportSheets(){
   const btn=document.getElementById('sheetBtn');
   btn.textContent='⏳ 생성중...';btn.disabled=true;
   try{
-    const exportData={};
-    if(categoryFilter!=='전체'){
-      exportData.category=categoryFilter;
-      btn.textContent=`⏳ ${categoryFilter} 생성중...`;
-    }
-    const r=await fetch('/api/export-sheets',{method:'POST',headers:authHeaders(),body:JSON.stringify(exportData)});
+    const r=await authFetch('/api/export-sheets',{method:'POST',body:JSON.stringify({})});
     const d=await r.json();
     btn.textContent='📊 구글시트';btn.disabled=false;
     if(d.ok!==false&&d.url){window.open(d.url,'_blank')}
@@ -510,7 +546,7 @@ async function exportSheets(){
 // CSV 추출 (Google Sheets 호환)
 function exportCSV(){
   if(!results.length){alert('추출할 데이터가 없습니다');return}
-  const typeName={balloon:'별풍선',adballoon:'애드벌룬',video:'영상풍선',mission:'대결미션'};
+  const typeName={balloon:'별풍선',adballoon:'애드벌룬',video:'영상풍선',mission:'대결미션',challenge:'도전미션'};
   const header=['미션명','타입','개수','닉네임','유저ID','도메인','메시지','상태','시간'];
   const rows=results.map(r=>[
     r.templateName||'',
@@ -540,8 +576,8 @@ let blogFirst=true;
 function addBLog(b){
   const el=document.getElementById('bLog');
   if(blogFirst){el.innerHTML='';blogFirst=false}
-  const tc={balloon:'color:var(--blue)',adballoon:'color:var(--purple)',video:'color:var(--cyan)',mission:'color:var(--yellow);font-weight:800',tts:'color:var(--orange);font-weight:800'};
-  const tn={balloon:'별풍',adballoon:'애드',video:'영상',mission:'대결',tts:'💬TTS'};
+  const tc={balloon:'color:var(--blue)',adballoon:'color:var(--purple)',video:'color:var(--cyan)',mission:'color:var(--yellow);font-weight:800',challenge:'color:var(--orange);font-weight:800',tts:'color:var(--orange);font-weight:800'};
+  const tn={balloon:'별풍',adballoon:'애드',video:'영상',mission:'대결',challenge:'도전',tts:'💬TTS'};
   const tp=b.type||'balloon';
   const mTitle=b.missionTitle?` [${b.missionTitle}]`:'';
   const msgHtml=b.message?`<span style="color:var(--orange);font-weight:600;margin-left:4px">"${b.message}"</span>`:'';
@@ -550,14 +586,126 @@ function addBLog(b){
 }
 
 
-function playSound(){try{const c=new(window.AudioContext||window.webkitAudioContext)(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;o.type='sine';g.gain.value=.12;o.start();g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);o.stop(c.currentTime+.25)}catch(e){}}
 
 async function loadCfg(){try{const r=await fetch('/api/config');const c=await r.json();if(c.streamerId)document.getElementById('sInput').value=c.streamerId;if(c.autoThreshold){autoThreshold=c.autoThreshold;updAutoDesc()}}catch(e){}}
 
+// 롤 계정 조회
+const tierOrder={CHALLENGER:0,GRANDMASTER:1,MASTER:2,DIAMOND:3,EMERALD:4,PLATINUM:5,GOLD:6,SILVER:7,BRONZE:8,IRON:9,unranked:10};
+let lolOpen=false;
+function toggleLolPanel(){
+  lolOpen=!lolOpen;
+  document.getElementById('lolPanel').style.display=lolOpen?'block':'none';
+  if(lolOpen)document.getElementById('lolName').focus();
+}
+document.addEventListener('click',e=>{
+  if(lolOpen&&!e.target.closest('#lolPanel')&&!e.target.closest('#lolBtn')){
+    lolOpen=false;document.getElementById('lolPanel').style.display='none';
+  }
+});
+// localStorage 매핑
+function getLolMap(){ try{ return JSON.parse(localStorage.getItem('lol_name_map')||'{}'); }catch(e){ return {}; } }
+function saveLolMap(map){ localStorage.setItem('lol_name_map', JSON.stringify(map)); }
+function setLolMapping(k,v){ const m=getLolMap(); m[k]=v; saveLolMap(m); }
+function delLolMapping(k){ const m=getLolMap(); delete m[k]; saveLolMap(m); }
+// 딥롤 API (브라우저 직접 호출)
+async function fetchDeepLol2(queryName, status){
+  try{
+    const r=await fetch(`https://b2c-api-cdn.deeplol.gg/summoner/strm_pro_info?name=${encodeURIComponent(queryName)}&status=${status}`);
+    const d=await r.json();
+    if(d.account_list&&d.account_list.length>0) return d;
+  }catch(e){}
+  return null;
+}
+async function searchAutoComplete2(s){
+  try{
+    const r=await fetch(`https://b2c-api-cdn.deeplol.gg/summoner/pro-search-auto-complete?search_string=${encodeURIComponent(s)}&riot_id_tag_line=`);
+    const d=await r.json();
+    if(d.streamer&&d.streamer.length>0) return {player_name:d.streamer[0].player_name,status:'streamer'};
+    if(d.pro&&d.pro.length>0) return {player_name:d.pro[0].player_name,status:'pro'};
+  }catch(e){}
+  return null;
+}
+async function deepLolLookup2(name){
+  const names=[name];
+  const cleaned=name.replace(/^[^가-힣a-zA-Z0-9]+/,'').replace(/[^가-힣a-zA-Z0-9]+$/,'').trim();
+  if(cleaned&&cleaned!==name) names.push(cleaned);
+  const korOnly=name.replace(/[^가-힣]/g,'');
+  if(korOnly.length>=2&&korOnly!==name&&korOnly!==cleaned) names.push(korOnly);
+  // 0: localStorage 매핑
+  const map=getLolMap();
+  if(map[name]){ for(const st of ['streamer','pro']){ const r=await fetchDeepLol2(map[name],st); if(r) return r; } }
+  // 1: 직접 조회
+  for(const st of ['streamer','pro']){ for(const n of names){ const r=await fetchDeepLol2(n,st); if(r) return r; } }
+  // 2: auto-complete
+  let found=null;
+  for(const n of names){ found=await searchAutoComplete2(n); if(found) break; }
+  // 3: 접두사 축소
+  if(!found){ const base=korOnly.length>=2?korOnly:(cleaned||name); for(let len=base.length-1;len>=2&&!found;len--){ found=await searchAutoComplete2(base.substring(0,len)); } }
+  if(found) return await fetchDeepLol2(found.player_name, found.status);
+  return null;
+}
+async function searchLol(){
+  const name=document.getElementById('lolName').value.trim();
+  if(!name)return;
+  const el=document.getElementById('lolList');
+  el.innerHTML='<div style="text-align:center;padding:12px;color:var(--muted);font-size:12px">검색중...</div>';
+  const deepUrl='https://www.deeplol.gg/summoner/search/kr/'+encodeURIComponent(name);
+  try{
+    const d=await deepLolLookup2(name);
+    if(!d){
+      const map=getLolMap();const saved=map[name]||'';
+      el.innerHTML=`<div style="padding:8px"><div style="color:var(--muted);font-size:11px;margin-bottom:8px;text-align:center">자동 조회 실패</div>
+        <div style="display:flex;gap:4px;margin-bottom:8px">
+          <input id="lolManualInput2" placeholder="딥롤 등록명 입력" value="${saved}" style="flex:1;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-family:inherit">
+          <button onclick="saveLolManual2('${name.replace(/'/g,"\\'")}')" style="padding:5px 10px;border-radius:4px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">저장</button>
+        </div>
+        ${saved?`<div style="text-align:center;margin-bottom:6px"><button onclick="delLolMapping('${name.replace(/'/g,"\\'")}');searchLol()" style="padding:3px 8px;border:none;background:transparent;color:var(--red);font-size:10px;cursor:pointer;font-family:inherit">매핑 삭제</button></div>`:''}
+        <div style="text-align:center"><a href="${deepUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:6px 14px;border-radius:5px;background:rgba(96,165,250,.15);color:#60a5fa;font-size:11px;font-weight:700;text-decoration:none;border:1px solid rgba(96,165,250,.3)">딥롤에서 검색 →</a></div></div>`;
+      const inp2=document.getElementById('lolManualInput2');
+      if(inp2) inp2.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing){e.preventDefault();saveLolManual2(name);}});
+      return;
+    }
+    const sorted=d.account_list.slice().sort((a,b)=>(tierOrder[a.tier]??99)-(tierOrder[b.tier]??99)||(b.lp||0)-(a.lp||0));
+    const map=getLolMap();const hasSaved=!!map[name];
+    el.innerHTML=sorted.map(a=>{
+      const fowUrl='https://fow.kr/find/'+encodeURIComponent(a.riot_id+'-'+a.riot_tag);
+      const lpText=a.tier!=='unranked'?a.lp+'LP':'';
+      const ago=a.last_game_date>0?timeAgo(a.last_game_date*1000):'';
+      return`<a href="${fowUrl}" target="_blank" class="lol-card">
+        <span class="tier-badge ${a.tier}">${a.tier!=='unranked'?a.tier:'UN'}</span>
+        <div style="flex:1;min-width:0">
+          <div><span class="riot-id">${a.riot_id}</span><span class="riot-tag">#${a.riot_tag}</span></div>
+          <div><span class="lp">${lpText}${lpText&&ago?' · ':''}${ago}</span></div>
+        </div>
+        <span class="fow-go">fow.kr →</span>
+      </a>`;
+    }).join('')+(hasSaved?`<div style="text-align:center;padding:4px"><button onclick="delLolMapping('${name.replace(/'/g,"\\'")}');searchLol()" style="border:none;background:transparent;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit">매핑 초기화 (${map[name]})</button></div>`:'');
+  }catch(e){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--red);font-size:12px">오류: '+e.message+'</div>';}
+}
+async function saveLolManual2(soopName){
+  const inp=document.getElementById('lolManualInput2');
+  if(!inp)return;const val=inp.value.trim();if(!val)return;
+  setLolMapping(soopName,val);
+  document.getElementById('lolName').value=soopName;
+  searchLol();
+}
+function timeAgo(ts){
+  const diff=Date.now()-ts;
+  const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),d=Math.floor(diff/86400000);
+  if(d>0)return d+'일 전';if(h>0)return h+'시간 전';if(m>0)return m+'분 전';return '방금';
+}
+
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.id==='sInput')setStreamer();
+  if(e.key==='Enter'&&e.target.id==='lolName')searchLol();
   if(e.key==='Enter'&&['tName','tCategory','tCount'].includes(e.target.id))addTemplate();
   if(e.key==='Enter'&&e.target.id==='autoVal')setAutoThreshold();
+  if(e.key==='Enter'&&!e.isComposing&&e.target.classList.contains('r-memo')){
+    e.preventDefault();
+    const id=Number(e.target.getAttribute('data-rid'));
+    const val=e.target.value.trim();
+    if(val){updMemo(id,val);const r=results.find(x=>x.id===id);if(r)r.message=val;renderRes();}
+  }
 });
 
 // loadCfg, connectSSE는 로그인 성공 시 showMain()에서 호출

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MK 지통실</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080f0a;--card:#0f1a12;--card2:#162219;--border:#1e3625;--green:#22c55e;--text:#f1f4f1;--muted:#557060;--red:#ef4444;--blue:#3b82f6;--orange:#f97316}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(74,222,128,.04)1px,transparent 1px),linear-gradient(90deg,rgba(74,222,128,.04)1px,transparent 1px);background-size:40px 40px;pointer-events:none}
+.app{position:relative;z-index:1;max-width:1800px;margin:0 auto;padding:16px}
+
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
+.logo{font-family:'Black Han Sans';font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px}
+.logo img{width:32px;height:32px;border-radius:6px}
+
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.toolbar select{padding:6px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;cursor:pointer}
+.toolbar select:focus{outline:none;border-color:var(--green)}
+.btn{padding:6px 14px;border-radius:6px;border:1px solid;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;background:transparent}
+.btn-green{border-color:var(--green);color:var(--green)}.btn-green:hover{background:rgba(34,197,94,.1)}
+.btn-muted{border-color:#333;color:#777}.btn-muted:hover{background:rgba(255,255,255,.03)}
+.btn-red{border-color:var(--red);color:var(--red);font-size:10px;padding:3px 6px}.btn-red:hover{background:rgba(239,68,68,.08)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700}
+.badge-live{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3)}
+.badge-off{background:rgba(85,112,96,.1);color:var(--muted);border:1px solid rgba(85,112,96,.2)}
+
+/* Teams */
+.teams{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1000px){.teams{grid-template-columns:1fr}}
+.team-col{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.team-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.team-name{font-family:'Black Han Sans';font-size:20px;display:flex;align-items:center;gap:8px}
+.team-name img{width:28px;height:28px;border-radius:50%;border:2px solid var(--border)}
+.team-tag{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:800;letter-spacing:1px}
+.team-a .team-tag{background:rgba(59,130,246,.15);color:var(--blue)}
+.team-b .team-tag{background:rgba(239,68,68,.15);color:var(--red)}
+.team-actions{display:flex;gap:4px}
+
+/* Member */
+.member{border-bottom:1px solid rgba(30,54,37,.5)}
+.member:last-child{border-bottom:none}
+.member-header{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:.15s;user-select:none}
+.member-header:hover{background:rgba(74,222,128,.03)}
+.member-img{width:36px;height:36px;border-radius:50%;border:2px solid var(--border);object-fit:cover;flex-shrink:0}
+.member-info{flex:1;min-width:0}
+.member-name{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member-role{font-size:11px;color:var(--muted);font-weight:600}
+.member-status{flex-shrink:0;display:flex;align-items:center;gap:6px}
+.live-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.live-dot.on{background:var(--red);box-shadow:0 0 6px var(--red);animation:pulse 1.5s infinite}
+.live-dot.off{background:#333}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.live-label.on{color:var(--red)}
+.live-label.off{color:#444}
+.toggle-arrow{font-size:14px;color:var(--muted);transition:.2s;flex-shrink:0;width:20px;text-align:center}
+.toggle-arrow.open{transform:rotate(180deg)}
+
+/* Stream */
+.stream-wrap{overflow:hidden;transition:max-height .3s ease,opacity .2s ease;max-height:0;opacity:0}
+.stream-wrap.open{max-height:800px;opacity:1}
+.stream-inner{padding:0 12px 12px}
+.stream-frame{position:relative;width:100%;padding-top:56.25%;background:#000;border-radius:8px;overflow:hidden}
+.stream-frame iframe{position:absolute;top:-38px;left:0;width:100%;height:calc(100% + 200px);border:none}
+.stream-offline{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#444;gap:8px}
+.stream-offline .icon{font-size:40px;opacity:.3}
+.stream-offline .text{font-size:12px;font-weight:600}
+.stream-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 0 4px;gap:8px}
+.stream-title{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stream-links{display:flex;gap:4px;flex-shrink:0}
+.stream-links a,.stream-links button{font-size:10px;padding:3px 8px;border-radius:4px;text-decoration:none;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s}
+.link-channel{background:rgba(74,222,128,.08);color:var(--green);border:1px solid rgba(74,222,128,.2)}
+.link-channel:hover{background:rgba(74,222,128,.15)}
+.link-pop{background:rgba(249,115,22,.08);color:var(--orange);border:1px solid rgba(249,115,22,.2)}
+.link-pop:hover{background:rgba(249,115,22,.15)}
+
+/* Search (inside team column) */
+.team-search{padding:10px 16px;border-top:1px solid rgba(30,54,37,.3)}
+.search-wrap{position:relative}
+.search-wrap input{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit}
+.search-wrap input:focus{outline:none;border-color:var(--green)}
+.search-results{position:absolute;bottom:100%;left:0;right:0;background:#111;border:1px solid var(--border);border-radius:8px 8px 0 0;max-height:240px;overflow-y:auto;z-index:50;display:none}
+.search-results.show{display:block}
+.sr-item{display:flex;align-items:center;gap:10px;padding:8px 12px;cursor:pointer;transition:.1s;border-bottom:1px solid rgba(30,54,37,.3)}
+.sr-item:hover,.sr-item.selected{background:rgba(74,222,128,.08)}
+.sr-item img{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);object-fit:cover;flex-shrink:0}
+.sr-item .sr-name{font-size:13px;font-weight:700}
+.sr-item .sr-id{font-size:10px;color:var(--muted)}
+.sr-item .sr-fav{font-size:10px;color:#555;margin-left:auto;flex-shrink:0}
+.search-loading{padding:12px;text-align:center;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="logo"><img src="icon.png" alt="MK">MK
+        <a href="/" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px;margin-left:4px">미션매니저</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/team" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">팀뽑기</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/ladder" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">사다리</a>
+        <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+        <a href="/control" style="text-decoration:none;-webkit-text-fill-color:inherit;border-bottom:2px solid var(--green);padding-bottom:1px">지통실</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-green" onclick="loadLatestGame()">🔄 최근 솔랭 불러오기</button>
+    <button class="btn btn-green" onclick="refreshLiveStatus()">📡 라이브 체크</button>
+    <button class="btn btn-muted" onclick="toggleAll(true)">전체 열기</button>
+    <button class="btn btn-muted" onclick="toggleAll(false)">전체 닫기</button>
+    <span style="font-size:10px;color:var(--orange);font-weight:600">영상 최대 4개 동시 표시</span>
+    <div style="flex:1"></div>
+    <div id="liveCount"></div>
+  </div>
+
+  <div id="content"></div>
+</div>
+
+<script>
+// ═══════════ STATE ═══════════
+let currentGame = null;
+let liveStatus = {};
+let openStreams = {};
+let refreshInterval = null;
+let searchTimers = {};
+let searchCaches = {};
+let lastResults = {};   // per-team last search results
+let selectedIdx = {};   // per-team keyboard selection index
+
+// ═══════════ INIT ═══════════
+function init() {
+  loadLatestGame();
+  refreshInterval = setInterval(refreshLiveStatus, 30000);
+}
+
+function loadLatestGame() {
+  let ladder = [];
+  try { ladder = JSON.parse(localStorage.getItem('mk_ladder_history') || '[]'); } catch(e) {}
+  if (ladder.length > 0) {
+    currentGame = ladder[0]; // 가장 최근 솔랭내기
+    renderTeams();
+    refreshLiveStatus();
+  } else {
+    currentGame = { teamA: [], teamB: [], timestamp: new Date().toISOString() };
+    renderTeams();
+  }
+}
+
+
+// ═══════════ LOAD GAME ═══════════
+
+// ═══════════ RENDER ═══════════
+function renderTeams() {
+  if (!currentGame) return;
+  const { teamA = [], teamB = [] } = currentGame;
+  const aCapt = teamA[0]?.name || 'A';
+  const bCapt = teamB[0]?.name || 'B';
+
+  document.getElementById('content').innerHTML = `
+    <div class="teams">
+      <div class="team-col team-a">
+        <div class="team-header">
+          <div class="team-name">
+            ${teamA[0]?.img ? `<img src="${teamA[0].img}" alt="">` : ''}
+            ${aCapt}팀
+            <span class="team-tag">TEAM A</span>
+          </div>
+          <div class="team-actions">
+            <button class="btn btn-muted" style="font-size:10px;padding:3px 8px" onclick="toggleTeam('A',true)">전체열기</button>
+            <button class="btn btn-muted" style="font-size:10px;padding:3px 8px" onclick="toggleTeam('A',false)">전체닫기</button>
+          </div>
+        </div>
+        ${teamA.map((m,i) => memberCard(m, 'A', i)).join('')}
+        <div class="team-search">
+          <div class="search-wrap">
+            <input type="text" id="search-A" placeholder="스트리머 검색 (닉네임/아이디)" autocomplete="off"
+              oninput="onSearch('A')" onkeydown="onSearchKey(event,'A')">
+            <div class="search-results" id="sr-A"></div>
+          </div>
+        </div>
+      </div>
+      <div class="team-col team-b">
+        <div class="team-header">
+          <div class="team-name">
+            ${teamB[0]?.img ? `<img src="${teamB[0].img}" alt="">` : ''}
+            ${bCapt}팀
+            <span class="team-tag">TEAM B</span>
+          </div>
+          <div class="team-actions">
+            <button class="btn btn-muted" style="font-size:10px;padding:3px 8px" onclick="toggleTeam('B',true)">전체열기</button>
+            <button class="btn btn-muted" style="font-size:10px;padding:3px 8px" onclick="toggleTeam('B',false)">전체닫기</button>
+          </div>
+        </div>
+        ${teamB.map((m,i) => memberCard(m, 'B', i)).join('')}
+        <div class="team-search">
+          <div class="search-wrap">
+            <input type="text" id="search-B" placeholder="스트리머 검색 (닉네임/아이디)" autocomplete="off"
+              oninput="onSearch('B')" onkeydown="onSearchKey(event,'B')">
+            <div class="search-results" id="sr-B"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  updateLiveCount();
+}
+
+function memberCard(m, team, idx) {
+  const bid = m.id || '';
+  const st = liveStatus[bid];
+  const isLive = st?.live || false;
+  const isOpen = openStreams[bid] || false;
+  const title = st?.title || '';
+
+  return `
+    <div class="member" data-bid="${bid}" data-team="${team}">
+      <div class="member-header" onclick="toggleStream('${bid}')">
+        <img class="member-img" src="${m.img || ''}" alt="" onerror="this.src='icon.png'">
+        <div class="member-info">
+          <div class="member-name">${m.name || bid}</div>
+          <div class="member-role">${m.role || ''} · ${bid}</div>
+        </div>
+        <div class="member-status">
+          <span class="live-dot ${isLive?'on':'off'}"></span>
+          <span class="live-label ${isLive?'on':'off'}">${isLive?'LIVE':'OFF'}</span>
+        </div>
+        <button class="btn btn-red" onclick="event.stopPropagation();removeMember('${bid}','${team}')" title="제거">✕</button>
+        <span class="toggle-arrow ${isOpen?'open':''}">▼</span>
+      </div>
+      <div class="stream-wrap ${isOpen?'open':''}" id="sw-${bid}">
+        <div class="stream-inner">
+          <div class="stream-bar">
+            <span class="stream-title" id="st-${bid}">${title || (isLive ? '방송 중' : '오프라인')}</span>
+            <div class="stream-links">
+              <a class="link-channel" href="https://ch.sooplive.co.kr/${bid}" target="_blank">채널</a>
+              <button class="link-pop" onclick="event.stopPropagation();openPopup('${bid}')">팝업</button>
+            </div>
+          </div>
+          <div class="stream-frame" id="sf-${bid}">
+            ${isLive && isOpen ? streamIframe(bid, st.bno) :
+              `<div class="stream-offline"><div class="icon">📺</div><div class="text">${isLive ? '클릭하여 열기' : '오프라인'}</div></div>`}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function streamIframe(bid, bno) {
+  const url = `https://play.sooplive.co.kr/${bid}/${bno || ''}`;
+  return `<iframe src="${url}" allowfullscreen allow="autoplay; encrypted-media" loading="lazy"></iframe>`;
+}
+
+// ═══════════ REMOVE ═══════════
+function removeMember(bid, team) {
+  if (!currentGame) return;
+  const arr = team === 'A' ? currentGame.teamA : currentGame.teamB;
+  const idx = arr.findIndex(m => m.id === bid);
+  if (idx >= 0) arr.splice(idx, 1);
+  delete openStreams[bid];
+  delete liveStatus[bid];
+  renderTeams();
+}
+
+// ═══════════ TOGGLE ═══════════
+function toggleStream(bid) {
+  openStreams[bid] = !openStreams[bid];
+  const wrap = document.getElementById('sw-' + bid);
+  const arrow = wrap?.parentElement.querySelector('.toggle-arrow');
+  if (!wrap) return;
+
+  if (openStreams[bid]) {
+    wrap.classList.add('open');
+    if (arrow) arrow.classList.add('open');
+    const st = liveStatus[bid];
+    if (st?.live) {
+      const frame = document.getElementById('sf-' + bid);
+      if (frame && !frame.querySelector('iframe')) frame.innerHTML = streamIframe(bid, st.bno);
+    }
+  } else {
+    wrap.classList.remove('open');
+    if (arrow) arrow.classList.remove('open');
+    const frame = document.getElementById('sf-' + bid);
+    if (frame) {
+      const st = liveStatus[bid];
+      frame.innerHTML = `<div class="stream-offline"><div class="icon">📺</div><div class="text">${st?.live ? '클릭하여 열기' : '오프라인'}</div></div>`;
+    }
+  }
+}
+
+function closeTeam(team) {
+  if (!currentGame) return;
+  (team === 'A' ? currentGame.teamA : currentGame.teamB || []).forEach(m => {
+    if (m.id && openStreams[m.id]) toggleStream(m.id);
+  });
+}
+
+function toggleTeam(team, open) {
+  if (!currentGame) return;
+  if (open) {
+    // 반대팀 먼저 닫기
+    closeTeam(team === 'A' ? 'B' : 'A');
+  }
+  (team === 'A' ? currentGame.teamA : currentGame.teamB || []).forEach(m => {
+    if (m.id && openStreams[m.id] !== open) toggleStream(m.id);
+  });
+}
+
+function toggleAll(open) {
+  if (!currentGame) return;
+  [...(currentGame.teamA||[]), ...(currentGame.teamB||[])].forEach(m => {
+    if (m.id && openStreams[m.id] !== open) toggleStream(m.id);
+  });
+}
+
+// ═══════════ LIVE STATUS ═══════════
+async function refreshLiveStatus() {
+  if (!currentGame) return;
+  const all = [...(currentGame.teamA||[]), ...(currentGame.teamB||[])];
+  const bids = all.map(m => m.id).filter(Boolean);
+  if (!bids.length) { updateLiveCount(); return; }
+
+  try {
+    const res = await fetch('/api/live-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bids }) });
+    const data = await res.json();
+    liveStatus = data.results || {};
+  } catch(e) { return; }
+
+  bids.forEach(bid => {
+    const st = liveStatus[bid];
+    const mem = document.querySelector(`.member[data-bid="${bid}"]`);
+    if (!mem) return;
+    const dot = mem.querySelector('.live-dot');
+    const label = mem.querySelector('.live-label');
+    const title = document.getElementById('st-' + bid);
+    if (dot) dot.className = 'live-dot ' + (st?.live ? 'on' : 'off');
+    if (label) { label.className = 'live-label ' + (st?.live ? 'on' : 'off'); label.textContent = st?.live ? 'LIVE' : 'OFF'; }
+    if (title) title.textContent = st?.title || (st?.live ? '방송 중' : '오프라인');
+    if (openStreams[bid]) {
+      const frame = document.getElementById('sf-' + bid);
+      if (frame) {
+        if (st?.live && !frame.querySelector('iframe')) frame.innerHTML = streamIframe(bid, st.bno);
+        else if (!st?.live) frame.innerHTML = '<div class="stream-offline"><div class="icon">📺</div><div class="text">오프라인</div></div>';
+      }
+    }
+  });
+  updateLiveCount();
+}
+
+function updateLiveCount() {
+  if (!currentGame) return;
+  const all = [...(currentGame.teamA||[]), ...(currentGame.teamB||[])];
+  const total = all.filter(m => m.id).length;
+  const live = all.filter(m => liveStatus[m.id]?.live).length;
+  document.getElementById('liveCount').innerHTML = total > 0
+    ? `<span class="badge ${live>0?'badge-live':'badge-off'}"><span class="live-dot ${live>0?'on':'off'}" style="width:6px;height:6px"></span> ${live}/${total} LIVE</span>`
+    : '';
+}
+
+// ═══════════ POPUP ═══════════
+function openPopup(bid) {
+  const st = liveStatus[bid];
+  window.open(st?.live ? `https://play.sooplive.co.kr/${bid}/${st.bno}` : `https://ch.sooplive.co.kr/${bid}`, `soop_${bid}`, 'width=960,height=600,scrollbars=no');
+}
+
+// ═══════════ SEARCH (per-team) ═══════════
+function onSearch(team) {
+  clearTimeout(searchTimers[team]);
+  const q = document.getElementById('search-' + team).value.trim();
+  if (q.length < 1) { hideSearch(team); return; }
+  selectedIdx[team] = 0;
+  searchTimers[team] = setTimeout(() => doSearch(q, team), 250);
+}
+
+function onSearchKey(e, team) {
+  const box = document.getElementById('sr-' + team);
+  const items = box.querySelectorAll('.sr-item');
+  if (e.key === 'Escape') { hideSearch(team); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx[team] = Math.min((selectedIdx[team]||0)+1, items.length-1); highlightItem(team, items); return; }
+  if (e.key === 'ArrowUp') { e.preventDefault(); selectedIdx[team] = Math.max((selectedIdx[team]||0)-1, 0); highlightItem(team, items); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const list = lastResults[team] || [];
+    const idx = selectedIdx[team] || 0;
+    if (list[idx]) {
+      selectStreamer(list[idx].id, list[idx].name, list[idx].profileImage, team);
+    }
+    return;
+  }
+}
+
+function highlightItem(team, items) {
+  items.forEach((el,i) => el.classList.toggle('selected', i === (selectedIdx[team]||0)));
+  const sel = items[selectedIdx[team]||0];
+  if (sel) sel.scrollIntoView({ block: 'nearest' });
+}
+
+async function doSearch(q, team) {
+  const box = document.getElementById('sr-' + team);
+  const cacheKey = q.toLowerCase();
+  if (searchCaches[cacheKey]) { showResults(searchCaches[cacheKey], team); return; }
+  box.innerHTML = '<div class="search-loading">검색 중...</div>';
+  box.classList.add('show');
+  try {
+    const res = await fetch('/api/search-streamer?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    const list = data.streamers || [];
+    searchCaches[cacheKey] = list;
+    showResults(list, team);
+  } catch(e) { box.innerHTML = '<div class="search-loading">검색 실패</div>'; }
+}
+
+function showResults(list, team) {
+  const box = document.getElementById('sr-' + team);
+  lastResults[team] = list;
+  selectedIdx[team] = 0;
+  if (!list.length) { box.innerHTML = '<div class="search-loading">결과 없음</div>'; box.classList.add('show'); return; }
+  box.innerHTML = list.map((s,i) => `
+    <div class="sr-item${i===0?' selected':''}" onclick="selectStreamer('${s.id}','${(s.name||'').replace(/'/g,"\\'")}','${(s.profileImage||'').replace(/'/g,"\\'")}','${team}')">
+      <img src="${s.profileImage||'icon.png'}" alt="" onerror="this.src='icon.png'">
+      <div><div class="sr-name">${s.name}</div><div class="sr-id">${s.id}</div></div>
+      <div class="sr-fav">${s.favorite_cnt ? Number(s.favorite_cnt).toLocaleString()+'명' : ''}</div>
+    </div>`).join('');
+  box.classList.add('show');
+}
+
+function hideSearch(team) {
+  document.getElementById('sr-' + team).classList.remove('show');
+  lastResults[team] = [];
+}
+
+function selectStreamer(bid, name, img, team) {
+  hideSearch(team);
+  const input = document.getElementById('search-' + team);
+  input.value = '';
+
+  if (!currentGame) currentGame = { teamA: [], teamB: [], timestamp: new Date().toISOString() };
+
+  // 중복 체크
+  const all = [...(currentGame.teamA||[]), ...(currentGame.teamB||[])];
+  if (all.some(m => m.id === bid)) return;
+
+  const member = { name: name || bid, id: bid, img: img || '', role: '🎮 추가' };
+  if (team === 'A') currentGame.teamA.push(member);
+  else currentGame.teamB.push(member);
+
+  renderTeams();
+  refreshLiveStatus();
+  // 추가 후 검색창에 포커스 유지
+  setTimeout(() => document.getElementById('search-' + team)?.focus(), 50);
+}
+
+// 바깥 클릭 시 검색결과 닫기
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) { hideSearch('A'); hideSearch('B'); }
+});
+
+// ═══════════ AUTO SYNC ═══════════
+window.addEventListener('storage', e => { if (e.key === 'mk_ladder_history') loadLatestGame(); });
+
+// ═══════════ START ═══════════
+init();
+</script>
+</body>
+</html>

@@ -136,29 +136,6 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 .member-slot .name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .member-slot .remove{position:absolute;top:-5px;right:-5px;width:18px;height:18px;background:var(--red);color:#fff;border:none;border-radius:50%;font-size:10px;cursor:pointer;display:none;z-index:2}
 .member-slot.filled:hover .remove{display:flex;align-items:center;justify-content:center}
-/* 전적보기 */
-.lol-btn{padding:2px 6px;border-radius:3px;border:1px solid var(--cyan);background:transparent;color:var(--cyan);font-size:9px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
-.lol-btn:hover{background:rgba(110,231,183,.1)}
-.lol-popup{position:absolute;top:100%;right:0;width:280px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;z-index:1001;box-shadow:0 8px 24px rgba(0,0,0,.6);margin-top:4px}
-.lol-popup .lol-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;cursor:pointer;transition:all .12s;text-decoration:none;margin-bottom:3px;border:1px solid var(--border);background:var(--card2)}
-.lol-popup .lol-item:hover{border-color:var(--blue);background:rgba(74,222,128,.05)}
-.lol-popup .lol-tier{font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;white-space:nowrap}
-.lol-popup .lol-tier.MASTER{background:rgba(168,85,247,.15);color:#a855f7}
-.lol-popup .lol-tier.GRANDMASTER{background:rgba(239,68,68,.15);color:#ef4444}
-.lol-popup .lol-tier.CHALLENGER{background:rgba(234,179,8,.15);color:#eab308}
-.lol-popup .lol-tier.DIAMOND{background:rgba(96,165,250,.15);color:#60a5fa}
-.lol-popup .lol-tier.EMERALD{background:rgba(52,211,153,.15);color:#34d399}
-.lol-popup .lol-tier.PLATINUM{background:rgba(45,212,191,.15);color:#2dd4bf}
-.lol-popup .lol-tier.GOLD{background:rgba(251,191,36,.15);color:#fbbf24}
-.lol-popup .lol-tier.SILVER{background:rgba(148,163,184,.15);color:#94a3b8}
-.lol-popup .lol-tier.BRONZE{background:rgba(180,83,9,.15);color:#cd7c2f}
-.lol-popup .lol-tier.IRON{background:rgba(120,113,108,.15);color:#78716c}
-.lol-popup .lol-tier.unranked{background:rgba(100,116,139,.15);color:#64748b}
-.lol-popup .lol-name{font-size:12px;font-weight:700;color:var(--text)}
-.lol-popup .lol-tag{font-size:10px;color:var(--muted)}
-.lol-popup .lol-lp{font-size:10px;color:var(--text2)}
-.lol-popup .lol-go{margin-left:auto;font-size:9px;color:var(--muted)}
-
 .live-indicator{width:14px;height:14px;border-radius:3px;border:2px solid rgba(255,255,255,.2);flex-shrink:0;transition:all .3s}
 .live-indicator.on-air{background:#22c55e;border-color:#22c55e;cursor:pointer;box-shadow:0 0 6px rgba(34,197,94,.6);animation:livePulse 2s infinite}
 .live-indicator.off-air{background:#ef4444;border-color:#ef4444}
@@ -281,31 +258,12 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 <body>
 
 <!-- 로그인 화면 -->
-<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center">
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:32px;text-align:center;width:350px">
-    <img src="icon.png" style="width:64px;height:64px;border-radius:10px;margin-bottom:12px">
-    <div style="font-family:'Black Han Sans';font-size:24px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px">MK 통합 대시보드</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:20px">미션매니저 + 팀뽑기</div>
+<!-- 로그인 불필요 -->
 
-    <input id="loginPw" type="password" placeholder="비밀번호" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;text-align:center;margin-bottom:12px">
-
-    <div id="loginErr" style="font-size:10px;color:var(--red);margin-bottom:8px;min-height:14px"></div>
-    <button onclick="doLogin()" style="width:100%;padding:10px;background:linear-gradient(135deg,#4ade80,#22c55e);border:none;border-radius:6px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">입장</button>
-  </div>
-</div>
-
-<div class="app" id="mainApp" style="display:none">
+<div class="app" id="mainApp" style="display:block">
   <!-- 헤더 네비 -->
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)">
-    <div style="font-family:'Black Han Sans';font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px"><img src="icon.png" style="width:32px;height:32px;border-radius:6px">MK
-      <a href="/" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">미션매니저</a>
-      <span style="-webkit-text-fill-color:var(--muted);font-size:16px">/</span>
-      <a href="/team" style="text-decoration:none;-webkit-text-fill-color:inherit;border-bottom:2px solid var(--green);padding-bottom:1px">팀뽑기</a>
-      <span style="-webkit-text-fill-color:var(--muted);font-size:16px">/</span>
-      <a href="/ladder" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">사다리</a>
-      <span style="-webkit-text-fill-color:var(--muted);font-size:16px">/</span>
-      <a href="/control" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">지통실</a>
-    </div>
+    <div style="font-family:'Black Han Sans';font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px"><img src="icon.png" style="width:32px;height:32px;border-radius:6px">MK 팀뽑기</div>
   </div>
 
   <!-- 팀뽑기 -->
@@ -629,8 +587,8 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 
 <script>
 let currentTab = 'mission';
-let todayMembers = JSON.parse(localStorage.getItem('mk_today_members') || '[]');
-let gameHistory = JSON.parse(localStorage.getItem('mk_ladder_history') || '[]');
+let todayMembers = JSON.parse(localStorage.getItem('mk_pick_members') || '[]');
+let gameHistory = JSON.parse(localStorage.getItem('mk_pick_history') || '[]');
 
 // 게임 모드: 'solo' (솔랭내기) or 'land' (랜드/CK - 전원 맞벨)
 let gameMode = '';
@@ -706,28 +664,8 @@ let soloNumPairs = 5; // 초기 페어 수 (동적으로 추가/삭제)
 // 맞벨 (솔랭: 수동 / 랜드CK: 전원 기본 맞벨)
 let matchedPairs = new Map(); // memberId -> partnerId
 
-// 인증 (쿠키 기반)
-async function doLogin(){
-  const pw = document.getElementById('loginPw').value;
-  if(!pw){ document.getElementById('loginErr').textContent = '비밀번호를 입력하세요'; return; }
-  try{
-    const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
-    const d = await r.json();
-    if(d.ok){ showMain(); }
-    else { document.getElementById('loginErr').textContent = d.error || '틀렸습니다'; }
-  } catch(e) { document.getElementById('loginErr').textContent = '서버 연결 실패'; }
-}
-
-function showMain(){
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('mainApp').style.display = 'block';
-  document.getElementById('missionFrame').src = 'dashboard.html';
-  updateStats();
-  resetAll();
-}
-
-// 쿠키로 자동 로그인
-fetch('/api/verify').then(r => { if(r.ok) showMain(); }).catch(() => {});
+// 로그인 불필요 — 바로 시작
+window.addEventListener('DOMContentLoaded', () => { updateStats(); resetAll(); });
 
 function switchTab(tab, btn){
   currentTab = tab;
@@ -965,22 +903,20 @@ function drawLadder(){
   // 가로줄 수가 없으면 랜덤 생성 (초기 표시용), 최소 7개 보장
   if(!rungCount || rungCount < 7) rungCount = Math.floor(Math.random() * 4) + 7;
 
-  const lineCount = 3; // 항상 3줄 (X, 참가자1, 참가자2)
+  const lineCount = 3;
   const padX = W * 0.12;
   const padTop = 40;
   const padBottom = 30;
   const ladderH = H - padTop - padBottom;
   const gap = (W - padX * 2) / (lineCount - 1);
 
-  // 상단 라벨 (X, 참가자1, 참가자2)
+  // 상단 라벨
   ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
   ctx.textAlign = 'center';
 
-  // Line 0: X
   ctx.fillStyle = '#888888';
   ctx.fillText('X', padX, padTop - 12);
 
-  // Line 1: 참가자1 (파랑)
   if(ladderPlayers[0]){
     ctx.fillStyle = '#3b82f6';
     const label1 = ladderReady && !animatedLines.has(1) ? '▼ '+ladderPlayers[0].name : ladderPlayers[0].name;
@@ -990,7 +926,6 @@ function drawLadder(){
     ctx.fillText('?', padX + gap, padTop - 12);
   }
 
-  // Line 2: 참가자2 (빨강)
   if(ladderPlayers[1]){
     ctx.fillStyle = '#ef4444';
     const label2 = ladderReady && !animatedLines.has(2) ? '▼ '+ladderPlayers[1].name : ladderPlayers[1].name;
@@ -1010,11 +945,10 @@ function drawLadder(){
     ctx.beginPath(); ctx.moveTo(x, padTop); ctx.lineTo(x, padTop + ladderH); ctx.stroke();
   }
 
-  // 가로줄 랜덤 생성 — 0-1, 1-2 골고루 분배
+  // 가로줄 랜덤 생성
   ladderRungs = [];
   for(let r = 0; r < rungCount; r++){
     const y = padTop + (ladderH / (rungCount + 1)) * (r + 1);
-    // 홀수/짝수 번째 줄 교대 + 약간의 랜덤
     let pair;
     if(r % 2 === 0){
       pair = Math.random() < 0.8 ? [0, 1] : [1, 2];
@@ -1114,11 +1048,11 @@ function calcLadderPath(startLine){
 
 // ========== 사다리 애니메이션 ==========
 let skipAnimation = false;
-let completedPaths = []; // 이미 애니메이션 완료된 경로들 [{path, color, endLine}]
-const ladderColors = ['#888888', '#3b82f6', '#ef4444']; // X=회색, A=파랑, B=빨강
-let ladderReady = false; // 사다리 준비 상태
+let completedPaths = [];
+const ladderColors = ['#888888', '#3b82f6', '#ef4444'];
+let ladderReady = false;
 let ladderResults = null;
-let animatedLines = new Set(); // 이미 애니메이션한 줄 번호
+let animatedLines = new Set();
 
 // 초록 로봇 마스코트 그리기
 function drawMascot(ctx, x, y, size){
@@ -1166,7 +1100,6 @@ async function animateLadderPath(startLine, color){
     return endLine;
   }
 
-  // 경로 진행 중 그려진 부분 저장
   const drawnSegments = [];
   for(let i = 0; i < path.length - 1; i++){
     const from = path[i];
@@ -1183,15 +1116,12 @@ async function animateLadderPath(startLine, color){
       const x = from.x + (to.x - from.x) * t;
       const y = from.y + (to.y - from.y) * t;
 
-      // 전체 다시 그리기 (사다리 + 이전 완료 경로)
       redrawWithPaths();
 
-      // 현재 경로 지금까지 진행 부분
       ctx.strokeStyle = color;
       ctx.lineWidth = 5;
       ctx.shadowColor = color + '80';
       ctx.shadowBlur = 8;
-      // 이전 세그먼트 전부
       if(drawnSegments.length > 0 || s > 0){
         ctx.beginPath();
         ctx.moveTo(path[0].x, path[0].y);
@@ -1201,7 +1131,6 @@ async function animateLadderPath(startLine, color){
       }
       ctx.shadowBlur = 0;
 
-      // 마스코트 1개만
       drawMascot(ctx, x, y, 16);
 
       await sleep(8);
@@ -1209,7 +1138,6 @@ async function animateLadderPath(startLine, color){
     drawnSegments.push({x: to.x, y: to.y});
   }
 
-  // 완료 — 경로 저장
   completedPaths.push({path, color, endLine});
   redrawWithPaths();
   drawEndMarker(ctx, path[path.length - 1], color, endLine);
@@ -1286,19 +1214,15 @@ async function runLadder(){
   document.getElementById('showAllBtn').style.display = '';
   document.getElementById('ladderResult').style.display = 'none';
 
-  // 가로줄 수 랜덤 (7~11)
   rungCount = Math.floor(Math.random() * 5) + 7;
 
-  // 하단 라벨 셔플
   for(let i = bottomLabels.length - 1; i > 0; i--){
     const j = Math.floor(Math.random() * (i + 1));
     [bottomLabels[i], bottomLabels[j]] = [bottomLabels[j], bottomLabels[i]];
   }
 
-  // 사다리 새로 그리기
   drawLadder();
 
-  // 결과 미리 계산
   ladderResults = {};
   for(let i = 0; i < 3; i++){
     const { endLine } = calcLadderPath(i);
@@ -1309,7 +1233,6 @@ async function runLadder(){
   // 하단 라벨 공개 (셔플 후 보여주기)
   renderBottomLabels();
 
-  // 클릭 대기 모드
   ladderReady = true;
   logEvent('사다리 준비 완료! 상단의 이름을 클릭하세요.');
 }
@@ -1317,7 +1240,6 @@ async function runLadder(){
 // ========== 전체결과보기 (애니메이션 스킵) ==========
 function showAllResults(){
   skipAnimation = true;
-  // 아직 안 내려온 줄 모두 한번에 처리
   if(ladderReady){
     const canvas = document.getElementById('ladderCanvas');
     const ctx = canvas.getContext('2d');
@@ -1349,12 +1271,11 @@ function showAllResults(){
     const scaleY = (cv.height / 2) / rect.height;
     const mx = (e.clientX - rect.left) * scaleX;
     const my = (e.clientY - rect.top) * scaleY;
-    // 상단 라벨 영역 (padTop - 25 ~ padTop - 2)
     const W = cv.width / 2;
     const padX = W * 0.12;
     const gap = (W - padX * 2) / 2;
-    if(my < 5 || my > 42) return; // 라벨 영역 바깥
-    const hitW = 50; // 클릭 감지 너비
+    if(my < 5 || my > 42) return;
+    const hitW = 50;
     for(let i = 0; i < 3; i++){
       const cx = padX + i * gap;
       if(mx >= cx - hitW && mx <= cx + hitW){
@@ -1662,31 +1583,23 @@ function renderDraft(){
     if(aPicking){
       const rgb = aPulse==='blue'?'59,130,246':'239,68,68';
       panelA.style.borderColor = 'rgba('+rgb+',1)';
-      panelA.style.borderWidth = '3px';
-      panelA.style.boxShadow = '0 0 30px rgba('+rgb+',.5)';
-      panelA.style.background = 'rgba('+rgb+',.08)';
+      panelA.style.boxShadow = '0 0 20px rgba('+rgb+',.35)';
       panelA.style.animation = 'pickPulse-'+aPulse+' 1.5s infinite';
     } else {
       const rgb = getTeamPulse('A')==='blue'?'59,130,246':'239,68,68';
-      panelA.style.borderColor = 'rgba('+rgb+',.2)';
-      panelA.style.borderWidth = '';
+      panelA.style.borderColor = 'rgba('+rgb+',.3)';
       panelA.style.boxShadow = '';
-      panelA.style.background = '';
       panelA.style.animation = '';
     }
     if(bPicking){
       const rgb = bPulse==='blue'?'59,130,246':'239,68,68';
       panelB.style.borderColor = 'rgba('+rgb+',1)';
-      panelB.style.borderWidth = '3px';
-      panelB.style.boxShadow = '0 0 30px rgba('+rgb+',.5)';
-      panelB.style.background = 'rgba('+rgb+',.08)';
+      panelB.style.boxShadow = '0 0 20px rgba('+rgb+',.35)';
       panelB.style.animation = 'pickPulse-'+bPulse+' 1.5s infinite';
     } else {
       const rgb = getTeamPulse('B')==='blue'?'59,130,246':'239,68,68';
-      panelB.style.borderColor = 'rgba('+rgb+',.2)';
-      panelB.style.borderWidth = '';
+      panelB.style.borderColor = 'rgba('+rgb+',.3)';
       panelB.style.boxShadow = '';
-      panelB.style.background = '';
       panelB.style.animation = '';
     }
   }
@@ -2151,7 +2064,7 @@ function showTeamComplete(){
 
   gameHistory.unshift({ timestamp: new Date().toISOString(), teamA: [...teamA], teamB: [...teamB] });
   if(gameHistory.length > 50) gameHistory.pop();
-  localStorage.setItem('mk_ladder_history', JSON.stringify(gameHistory));
+  localStorage.setItem('mk_pick_history', JSON.stringify(gameHistory));
   updateStats();
 
   // 랜드/CK 모드: 진영 선택 표시 (랜덤·커스텀은 별도 처리이므로 제외)
@@ -2410,8 +2323,7 @@ function showMemberSearchResults(streamers) {
     item.appendChild(info);
     item.onclick = () => {
       if(membersConfirmed){ alert('멤버가 확정된 상태입니다.'); return; }
-      const searchQuery = input.value.trim();
-      const member = { id: streamer.id, name: streamer.name, profileImage: streamer.profileImage, searchQuery };
+      const member = { id: streamer.id, name: streamer.name, profileImage: streamer.profileImage };
       if(gameMode === 'land' || gameMode === 'solo'){
         const slots = gameMode === 'solo' ? soloSlots : landSlots;
         if(slots.some(s => s && s.id === streamer.id)){ input.value = ''; hideMemberSearchResults(); return; }
@@ -2543,7 +2455,7 @@ function fullReset(){
   resetAll();
 }
 
-function saveTodayMembers() { localStorage.setItem('mk_today_members', JSON.stringify(todayMembers)); }
+function saveTodayMembers() { localStorage.setItem('mk_pick_members', JSON.stringify(todayMembers)); }
 
 // 드래그 상태
 let dragSrcIdx = null;
@@ -2698,13 +2610,6 @@ function createLandSlot(slotIdx){
     info.innerHTML = '<div class="name">' + member.name + '</div>';
     slot.appendChild(info);
 
-    // 전적보기 버튼
-    const lolBtn = document.createElement('button');
-    lolBtn.className = 'lol-btn';
-    lolBtn.textContent = '전적';
-    lolBtn.onclick = (e) => { e.stopPropagation(); showLolPopup(member.name, lolBtn, member.searchQuery); };
-    slot.appendChild(lolBtn);
-
     // 방송 상태 인디케이터
     const liveIndicator = document.createElement('div');
     liveIndicator.className = 'live-indicator';
@@ -2742,7 +2647,6 @@ function createLandSlot(slotIdx){
   } else {
     // --- 빈 슬롯: 클릭하면 인라인 검색 ---
     slot.className = 'member-slot empty';
-    slot.setAttribute('data-slot-idx', slotIdx);
     const placeholder = document.createElement('div');
     placeholder.className = 'slot-placeholder';
     placeholder.textContent = '클릭하여 입력';
@@ -2803,13 +2707,6 @@ function createSoloSlot(slotIdx){
     info.innerHTML = '<div class="name">' + member.name + '</div>';
     slot.appendChild(info);
 
-    // 전적보기 버튼
-    const lolBtn = document.createElement('button');
-    lolBtn.className = 'lol-btn';
-    lolBtn.textContent = '전적';
-    lolBtn.onclick = (e) => { e.stopPropagation(); showLolPopup(member.name, lolBtn, member.searchQuery); };
-    slot.appendChild(lolBtn);
-
     // 방송 상태 인디케이터
     const liveIndicator = document.createElement('div');
     liveIndicator.className = 'live-indicator';
@@ -2845,7 +2742,6 @@ function createSoloSlot(slotIdx){
     }
   } else {
     slot.className = 'member-slot empty';
-    slot.setAttribute('data-slot-idx', slotIdx);
     const placeholder = document.createElement('div');
     placeholder.className = 'slot-placeholder';
     placeholder.textContent = '클릭하여 입력';
@@ -2881,18 +2777,6 @@ function createSoloSlot(slotIdx){
   }
 
   return slot;
-}
-
-// ====== 다음 빈 슬롯 자동 포커스 ======
-function focusNextEmptySlot(currentIdx, slotMode){
-  const slots = slotMode === 'solo' ? soloSlots : landSlots;
-  for(let i = currentIdx + 1; i < slots.length; i++){
-    if(!slots[i]){
-      const slotEl = document.querySelector('.member-slot[data-slot-idx="' + i + '"]');
-      if(slotEl) setTimeout(() => slotEl.click(), 100);
-      return;
-    }
-  }
 }
 
 // ====== 빈 슬롯 → 인라인 입력 활성화 ======
@@ -2974,23 +2858,11 @@ function activateSlotInput(slot, slotIdx, slotMode){
           syncTodayMembersFromSlots();
           activeSlotIdx = -1;
           updateTodayMembersList();
-          focusNextEmptySlot(slotIdx, slotMode);
         }
       }
     } else if(e.key === 'Escape'){
       activeSlotIdx = -1;
       updateTodayMembersList();
-    } else if(e.key === 'Tab' || ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && !input.value)){
-      e.preventDefault();
-      var goBack = e.shiftKey || e.key === 'ArrowLeft';
-      activeSlotIdx = -1;
-      updateTodayMembersList();
-      // 다음/이전 슬롯으로 이동
-      var step = goBack ? -1 : 1;
-      for(var si = slotIdx + step; si >= 0 && si < slots.length; si += step){
-        var nextSlot = document.querySelector('.member-slot[data-slot-idx="' + si + '"]');
-        if(nextSlot){ setTimeout(() => nextSlot.click(), 100); break; }
-      }
     }
   });
 
@@ -3020,7 +2892,6 @@ function activateSlotInput(slot, slotIdx, slotMode){
         syncTodayMembersFromSlots();
         activeSlotIdx = -1;
         updateTodayMembersList();
-        focusNextEmptySlot(slotIdx, slotMode);
       }
       item.addEventListener('mousedown', (e) => {
         e.preventDefault();
@@ -3949,7 +3820,6 @@ function customSideSelect(side){
 }
 
 // ========== 키보드 이벤트 ==========
-document.getElementById('loginPw').addEventListener('keydown', e => { if(e.key === 'Enter') doLogin(); });
 // IME 조합 추적
 document.getElementById('newMemberInput').addEventListener('compositionstart', () => { memberInputComposing = true; });
 document.getElementById('newMemberInput').addEventListener('compositionend', () => {
@@ -3992,196 +3862,6 @@ document.getElementById('newMemberInput').addEventListener('keydown', e => {
 
 document.addEventListener('click', (e) => {
   if(!e.target.closest('#newMemberInput') && !e.target.closest('#memberSearchResults')) hideMemberSearchResults();
-});
-
-// ========== 전적보기 (LoL) ==========
-let activeLolPopup = null;
-const tierOrder = {CHALLENGER:0,GRANDMASTER:1,MASTER:2,DIAMOND:3,EMERALD:4,PLATINUM:5,GOLD:6,SILVER:7,BRONZE:8,IRON:9};
-const _lolCache = {};
-
-// localStorage 매핑 관리
-function getLolMap(){ try{ return JSON.parse(localStorage.getItem('lol_name_map')||'{}'); }catch(e){ return {}; } }
-function saveLolMap(map){ localStorage.setItem('lol_name_map', JSON.stringify(map)); }
-function setLolMapping(soopName, deeplolName){ const m=getLolMap(); m[soopName]=deeplolName; saveLolMap(m); }
-function delLolMapping(soopName){ const m=getLolMap(); delete m[soopName]; saveLolMap(m); }
-
-function closeLolPopup(){
-  if(activeLolPopup){activeLolPopup.remove();activeLolPopup=null;}
-}
-
-async function fetchDeepLol(queryName, status){
-  const url = `https://b2c-api-cdn.deeplol.gg/summoner/strm_pro_info?name=${encodeURIComponent(queryName)}&status=${status}`;
-  try {
-    const r = await fetch(url);
-    const d = await r.json();
-    if(d.account_list && d.account_list.length > 0) return d;
-  } catch(e){}
-  return null;
-}
-
-async function searchDeepLolAutoComplete(searchName){
-  const url = `https://b2c-api-cdn.deeplol.gg/summoner/pro-search-auto-complete?search_string=${encodeURIComponent(searchName)}&riot_id_tag_line=`;
-  try {
-    const r = await fetch(url);
-    const d = await r.json();
-    if(d.streamer && d.streamer.length > 0) return { player_name: d.streamer[0].player_name, status: 'streamer' };
-    if(d.pro && d.pro.length > 0) return { player_name: d.pro[0].player_name, status: 'pro' };
-  } catch(e){}
-  return null;
-}
-
-// 전체 조회 체인
-async function deepLolLookup(name, searchQuery){
-  const names = [name];
-  const cleaned = name.replace(/^[^가-힣a-zA-Z0-9]+/, '').replace(/[^가-힣a-zA-Z0-9]+$/, '').trim();
-  if(cleaned && cleaned !== name) names.push(cleaned);
-  const korOnly = name.replace(/[^가-힣]/g, '');
-  if(korOnly.length >= 2 && korOnly !== name && korOnly !== cleaned) names.push(korOnly);
-  // 0단계: localStorage 매핑
-  const map = getLolMap();
-  if(map[name]){
-    for(const st of ['streamer','pro']){
-      const r = await fetchDeepLol(map[name], st);
-      if(r) return r;
-    }
-  }
-  // 1단계: 직접 조회
-  for(const st of ['streamer','pro']){
-    for(const n of names){
-      const r = await fetchDeepLol(n, st);
-      if(r) return r;
-    }
-  }
-  // 2단계: auto-complete
-  let found = null;
-  for(const n of names){
-    found = await searchDeepLolAutoComplete(n);
-    if(found) break;
-  }
-  // 3단계: 접두사 축소
-  if(!found){
-    const base = korOnly.length >= 2 ? korOnly : (cleaned || name);
-    for(let len = base.length - 1; len >= 2 && !found; len--){
-      found = await searchDeepLolAutoComplete(base.substring(0, len));
-    }
-  }
-  // 4단계: 원래 검색어로 시도 (예: "스맵"으로 검색해서 "스맵임" 선택한 경우)
-  if(!found && searchQuery){
-    const sq = searchQuery.trim();
-    if(sq && sq !== name && sq !== cleaned){
-      for(const st of ['streamer','pro']){
-        const r = await fetchDeepLol(sq, st);
-        if(r) return r;
-      }
-      found = await searchDeepLolAutoComplete(sq);
-    }
-  }
-  if(found) return await fetchDeepLol(found.player_name, found.status);
-  return null;
-}
-
-async function showLolPopup(name, btnEl, searchQuery){
-  closeLolPopup();
-  const popup = document.createElement('div');
-  popup.className = 'lol-popup';
-  popup.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:11px">로딩중...</div>';
-  btnEl.parentElement.style.position = 'relative';
-  btnEl.parentElement.appendChild(popup);
-  activeLolPopup = popup;
-  const deepUrl = `https://www.deeplol.gg/summoner/search/kr/${encodeURIComponent(name)}`;
-  try {
-    if(_lolCache[name]){
-      renderLolAccounts(popup, _lolCache[name], name, deepUrl);
-      return;
-    }
-    const result = await deepLolLookup(name, searchQuery);
-    if(result){
-      _lolCache[name] = result;
-      renderLolAccounts(popup, result, name, deepUrl);
-    } else {
-      renderLolFail(popup, name, deepUrl);
-    }
-  } catch(e) {
-    renderLolFail(popup, name, deepUrl);
-  }
-}
-
-function renderLolFail(popup, soopName, deepUrl){
-  const map = getLolMap();
-  const saved = map[soopName] || '';
-  popup.innerHTML = `<div style="padding:10px">
-    <div style="color:var(--muted);font-size:11px;margin-bottom:8px;text-align:center">자동 조회 실패</div>
-    <div style="display:flex;gap:4px;margin-bottom:8px">
-      <input id="lolManualInput" placeholder="딥롤 등록명 입력" value="${saved}" style="flex:1;padding:5px 8px;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;font-family:inherit">
-      <button onclick="saveLolManual('${soopName.replace(/'/g,"\\'")}')" style="padding:5px 10px;border-radius:4px;border:1px solid var(--green);background:transparent;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">저장</button>
-    </div>
-    ${saved ? `<div style="text-align:center;margin-bottom:6px"><button onclick="deleteLolManual('${soopName.replace(/'/g,"\\'")}')" style="padding:3px 8px;border:none;background:transparent;color:var(--red);font-size:10px;cursor:pointer;font-family:inherit">저장된 매핑 삭제</button></div>` : ''}
-    <div style="text-align:center"><a href="${deepUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:6px 14px;border-radius:5px;background:rgba(96,165,250,.15);color:#60a5fa;font-size:11px;font-weight:700;text-decoration:none;border:1px solid rgba(96,165,250,.3)">딥롤에서 검색 →</a></div>
-  </div>`;
-  const inp = popup.querySelector('#lolManualInput');
-  if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); saveLolManual(soopName); }});
-}
-
-async function saveLolManual(soopName){
-  const inp = document.getElementById('lolManualInput');
-  if(!inp) return;
-  const val = inp.value.trim();
-  if(!val) return;
-  setLolMapping(soopName, val);
-  delete _lolCache[soopName];
-  // 저장 후 재조회
-  if(activeLolPopup){
-    activeLolPopup.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:11px">조회중...</div>';
-    const deepUrl = `https://www.deeplol.gg/summoner/search/kr/${encodeURIComponent(soopName)}`;
-    const result = await deepLolLookup(soopName);
-    if(result){
-      _lolCache[soopName] = result;
-      renderLolAccounts(activeLolPopup, result, soopName, deepUrl);
-    } else {
-      renderLolFail(activeLolPopup, soopName, deepUrl);
-    }
-  }
-}
-
-function deleteLolManual(soopName){
-  delLolMapping(soopName);
-  delete _lolCache[soopName];
-  if(activeLolPopup){
-    const deepUrl = `https://www.deeplol.gg/summoner/search/kr/${encodeURIComponent(soopName)}`;
-    renderLolFail(activeLolPopup, soopName, deepUrl);
-  }
-}
-
-function renderLolAccounts(popup, data, soopName, deepUrl){
-  const accounts = (data.account_list||[]).slice().sort((a,b) => {
-    const ta = tierOrder[a.tier] ?? 99, tb = tierOrder[b.tier] ?? 99;
-    return ta !== tb ? ta - tb : (b.lp||0) - (a.lp||0);
-  });
-  const map = getLolMap();
-  const hasSaved = !!map[soopName];
-  popup.innerHTML = accounts.map(acc => {
-    const tier = acc.tier || 'unranked';
-    const tierCls = tier.toUpperCase();
-    const rid = acc.riot_id || acc.summoner_name || '';
-    const rtag = acc.riot_tag || '';
-    const lp = (acc.lp && tier !== 'unranked') ? `${acc.lp} LP` : '';
-    const fowUrl = `https://fow.kr/find/${encodeURIComponent(rid)}${rtag ? '-'+encodeURIComponent(rtag) : ''}`;
-    return `<a class="lol-item" href="${fowUrl}" target="_blank" rel="noopener">
-      <span class="lol-tier ${tierCls}">${tier}</span>
-      <span class="lol-name">${rid}</span>
-      ${rtag?`<span class="lol-tag">#${rtag}</span>`:''}
-      ${lp?`<span class="lol-lp">${lp}</span>`:''}
-      <span class="lol-go">→</span>
-    </a>`;
-  }).join('')
-  + (hasSaved ? `<div style="text-align:center;padding:4px;border-top:1px solid var(--border);margin-top:4px"><button onclick="deleteLolManual('${soopName.replace(/'/g,"\\'")}');showLolPopup('${soopName.replace(/'/g,"\\'")}',this.closest('.lol-popup').previousElementSibling)" style="border:none;background:transparent;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit">매핑 초기화 (${map[soopName]})</button></div>` : '')
-  + `<a href="${deepUrl}" target="_blank" rel="noopener" style="display:block;text-align:center;padding:5px;color:var(--muted);font-size:10px;text-decoration:none;margin-top:4px;border-top:1px solid var(--border)">딥롤에서 더보기 →</a>`;
-}
-
-document.addEventListener('click', (e) => {
-  if(activeLolPopup && !e.target.closest('.lol-popup') && !e.target.closest('.lol-btn')){
-    closeLolPopup();
-  }
 });
 
 // ========== 초기화 ==========

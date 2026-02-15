@@ -2,3 +2,8 @@ node_modules/
 .env
 *.log
 gcp-key.json
+.DS_Store
+deploy-test/
+data.json
+stress-test.js
+STRESS_TEST_PLAN.md

@@ -2,50 +2,82 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-// soop-extension을 사용하지 않고 우리의 검색 시스템만 사용
-// const { SoopClient, SoopChatEvent } = require('soop-extension');
+const { SoopClient, SoopChatEvent } = require('soop-extension');
 const { google } = require('googleapis');
+
+// 서버 크래시 방지 - 에러가 나도 서버가 죽지 않도록
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err.message);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
 
 const CONFIG = {
   STREAMER_ID: process.env.STREAMER_ID || 'phonics1',
   SOOP_USER_ID: process.env.SOOP_USER_ID || '',
   SOOP_PASSWORD: process.env.SOOP_PASSWORD || '',
   ADMIN_PASSWORD: '',
-  PORT: 3000,
+  PORT: parseInt(process.env.PORT) || 3000,
 };
 
 // 인증
-const AUTH_SECRET = crypto.randomBytes(16).toString('hex');
+let AUTH_SECRET = '';
 function makeToken(pw) { return crypto.createHmac('sha256', AUTH_SECRET).update(pw).digest('hex'); }
 let VALID_TOKEN = '';
 
 function generatePassword() {
-  return crypto.randomBytes(3).toString('hex'); // 6자리 랜덤 (예: a3f2b1)
+  return crypto.randomBytes(3).toString('hex');
 }
 
-function loadOrCreatePassword() {
+function loadOrCreateAuth() {
   const ep = path.join(__dirname, '.env');
+  const isCloud = !!process.env.RAILWAY_ENVIRONMENT || !!process.env.RENDER || !!process.env.FLY_APP_NAME;
   let lines = [];
   try { lines = fs.readFileSync(ep, 'utf-8').split('\n'); } catch(e) {}
 
-  let found = false;
+  let foundPw = false, foundSecret = false;
+
+  // 환경변수 우선 체크 (클라우드 배포용)
+  if (process.env.AUTH_SECRET) { AUTH_SECRET = process.env.AUTH_SECRET; foundSecret = true; }
+  if (process.env.ADMIN_PASSWORD) { CONFIG.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD; foundPw = true; }
+
+  // .env 파일에서 읽기
   for (const l of lines) {
     const [k, ...vp] = l.split('=');
     const v = vp.join('=').trim().replace(/^['"]|['"]$/g, '');
-    if (k?.trim() === 'ADMIN_PASSWORD' && v) { CONFIG.ADMIN_PASSWORD = v; found = true; }
+    if (k?.trim() === 'ADMIN_PASSWORD' && v && !foundPw) { CONFIG.ADMIN_PASSWORD = v; foundPw = true; }
+    if (k?.trim() === 'AUTH_SECRET' && v && !foundSecret) { AUTH_SECRET = v; foundSecret = true; }
   }
 
-  if (!found || !CONFIG.ADMIN_PASSWORD) {
-    CONFIG.ADMIN_PASSWORD = generatePassword();
-    // .env에 저장
-    const hasLine = lines.some(l => l.trim().startsWith('ADMIN_PASSWORD'));
-    if (hasLine) {
-      lines = lines.map(l => l.trim().startsWith('ADMIN_PASSWORD') ? `ADMIN_PASSWORD=${CONFIG.ADMIN_PASSWORD}` : l);
-    } else {
-      lines.push(`\n# 대시보드 접속 비밀번호 (자동생성)`);
-      lines.push(`ADMIN_PASSWORD=${CONFIG.ADMIN_PASSWORD}`);
+  // AUTH_SECRET 생성
+  if (!foundSecret || !AUTH_SECRET) {
+    AUTH_SECRET = crypto.randomBytes(16).toString('hex');
+    if (!isCloud) {
+      const hasLine = lines.some(l => l.trim().startsWith('AUTH_SECRET'));
+      if (hasLine) {
+        lines = lines.map(l => l.trim().startsWith('AUTH_SECRET') ? `AUTH_SECRET=${AUTH_SECRET}` : l);
+      } else {
+        lines.push(`\n# 인증 시크릿 (자동생성, 삭제하면 토큰 초기화)`);
+        lines.push(`AUTH_SECRET=${AUTH_SECRET}`);
+      }
+      fs.writeFileSync(ep, lines.join('\n'));
     }
-    fs.writeFileSync(ep, lines.join('\n'));
+  }
+
+  if (!foundPw || !CONFIG.ADMIN_PASSWORD) {
+    CONFIG.ADMIN_PASSWORD = generatePassword();
+    if (!isCloud) {
+      try { lines = fs.readFileSync(ep, 'utf-8').split('\n'); } catch(e) {}
+      const hasLine = lines.some(l => l.trim().startsWith('ADMIN_PASSWORD'));
+      if (hasLine) {
+        lines = lines.map(l => l.trim().startsWith('ADMIN_PASSWORD') ? `ADMIN_PASSWORD=${CONFIG.ADMIN_PASSWORD}` : l);
+      } else {
+        lines.push(`\n# 대시보드 접속 비밀번호 (자동생성)`);
+        lines.push(`ADMIN_PASSWORD=${CONFIG.ADMIN_PASSWORD}`);
+      }
+      fs.writeFileSync(ep, lines.join('\n'));
+    }
   }
   VALID_TOKEN = makeToken(CONFIG.ADMIN_PASSWORD);
 }
@@ -54,23 +86,43 @@ function savePassword(newPw) {
   CONFIG.ADMIN_PASSWORD = newPw;
   VALID_TOKEN = makeToken(newPw);
   const ep = path.join(__dirname, '.env');
-  let lines = [];
-  try { lines = fs.readFileSync(ep, 'utf-8').split('\n'); } catch(e) {}
-  const hasLine = lines.some(l => l.trim().startsWith('ADMIN_PASSWORD'));
-  if (hasLine) {
-    lines = lines.map(l => l.trim().startsWith('ADMIN_PASSWORD') ? `ADMIN_PASSWORD=${newPw}` : l);
-  } else {
-    lines.push(`ADMIN_PASSWORD=${newPw}`);
-  }
-  fs.writeFileSync(ep, lines.join('\n'));
+  try {
+    let lines = fs.readFileSync(ep, 'utf-8').split('\n');
+    const hasLine = lines.some(l => l.trim().startsWith('ADMIN_PASSWORD'));
+    if (hasLine) {
+      lines = lines.map(l => l.trim().startsWith('ADMIN_PASSWORD') ? `ADMIN_PASSWORD=${newPw}` : l);
+    } else {
+      lines.push(`ADMIN_PASSWORD=${newPw}`);
+    }
+    fs.writeFileSync(ep, lines.join('\n'));
+  } catch(e) { /* 클라우드 환경: 파일 없어도 메모리에서 동작 */ }
 }
 
 // ============================================
-// 상태
+// 상태 (파일 자동 저장/복원)
 // ============================================
+const DATA_FILE = path.join(__dirname, 'data.json');
 let missionTemplates = [];   // 미션 틀
 let missionResults = [];     // 매칭된 결과
 let autoThreshold = 0;       // 이 값 이상이면 템플릿 없어도 자동등록 (0=비활성)
+
+function saveData() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ missionTemplates, missionResults, autoThreshold }));
+  } catch(e) { console.error('💾 저장 실패:', e.message); }
+}
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const d = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+      missionTemplates = d.missionTemplates || [];
+      missionResults = d.missionResults || [];
+      autoThreshold = d.autoThreshold || 0;
+      console.log(`💾 데이터 복원: 템플릿 ${missionTemplates.length}개, 결과 ${missionResults.length}개`);
+    }
+  } catch(e) { console.error('💾 복원 실패:', e.message); }
+}
+loadData();
 let connectionStatus = 'disconnected';
 let soopChat = null;
 let reconnectTimer = null;
@@ -97,11 +149,18 @@ function normalizeUid(uid) {
   return uid ? uid.replace(/\(\d+\)$/, '') : '';
 }
 
+const SAVE_EVENTS = new Set(['templates','result','resultUpdate','resultDelete','resetResults','autoThreshold']);
+let saveTimer = null;
 function broadcast(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   sseClients = sseClients.filter(res => {
     try { res.write(msg); return true; } catch(e) { return false; }
   });
+  // 데이터 변경 시 자동 저장 (디바운스 1초)
+  if (SAVE_EVENTS.has(event)) {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveData, 1000);
+  }
 }
 
 // ============================================
@@ -121,7 +180,7 @@ function matchBalloon(userId, userNickname, amount, eventType) {
   const result = {
     id: Date.now() + Math.random(),
     templateId: matched ? matched.id : null,
-    templateName: matched ? matched.name : `${amount}개 자동등록`,
+    templateName: matched ? matched.name : '자동등록',
     starCount: matched ? matched.starCount : autoThreshold,
     userId, userNickname,
     channelUrl: matched ? (matched.collectDomain ? channelUrl : null) : channelUrl,
@@ -133,7 +192,6 @@ function matchBalloon(userId, userNickname, amount, eventType) {
     collectDomain: matched ? matched.collectDomain : true,
     collectMessage: matched ? matched.collectMessage : true,
     isAutoThreshold: autoMatch,
-    category: matched ? matched.category : '일반',
   };
 
   missionResults.unshift(result);
@@ -156,14 +214,16 @@ function parse0121(rawStr) {
       const data = JSON.parse(jsonStr);
       console.log(`🎲 0121 패킷 파싱 성공:`, JSON.stringify(data, null, 2));
 
-      // GIFT 타입이면 대결/도전미션 후원
-      if (data.type === 'GIFT') {
+      // GIFT/CHALLENGE_GIFT 타입이면 대결/도전미션 후원
+      if (data.type === 'GIFT' || data.type === 'CHALLENGE_GIFT') {
         const amt = parseInt(data.gift_count) || 0;
         const uid = data.user_id || '';
         const nick = data.user_nick || '';
         const title = data.title || '';
+        const isChallenege = data.type === 'CHALLENGE_GIFT';
+        const eventType = isChallenege ? 'challenge' : 'mission';
 
-        console.log(`🎯 대결미션 감지! [${title}] ${nick}(${uid}) → ${amt}개`);
+        console.log(`🎯 ${isChallenege ? '도전미션' : '대결미션'} 감지! [${title}] ${nick}(${uid}) → ${amt}개`);
 
         // 실시간 로그에 별풍선으로 표시
         broadcast('balloon', {
@@ -172,28 +232,28 @@ function parse0121(rawStr) {
           amount: amt,
           channelUrl: `https://ch.sooplive.co.kr/${uid}`,
           time: now(),
-          type: 'mission',
+          type: eventType,
           missionTitle: title,
         });
 
         // 미션 매칭 시스템에 연동
-        const result = matchBalloon(uid, nick, amt, 'mission');
+        const result = matchBalloon(uid, nick, amt, eventType);
 
-        // 이 유저의 다음 채팅을 메시지로 연결 (대결미션은 별풍 후 직접 타이핑)
+        // 이 유저의 다음 채팅을 메시지로 연결
         recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
         setTimeout(() => { delete recentDonors[uid]; }, 60000);
 
         const entry = {
           time: now(),
           typeCode: '0121',
-          eventType: 'mission',
+          eventType: eventType,
           data: data,
           raw: rawStr.substring(0, 300),
         };
         broadcast('missionPacket', entry);
 
         // 로그
-        const logLine = `[${new Date().toISOString()}] MISSION_GIFT: ${JSON.stringify(data)}\n`;
+        const logLine = `[${new Date().toISOString()}] ${data.type}: ${JSON.stringify(data)}\n`;
         fs.appendFile(path.join(__dirname, 'mission_packets.log'), logLine, () => {});
       }
       return data;
@@ -205,16 +265,9 @@ function parse0121(rawStr) {
 }
 
 // ============================================
-// SOOP 연결 (현재 비활성화 - 검색 기능만 사용)
+// SOOP 연결
 // ============================================
 async function connectToSoop() {
-  console.log(`🔌 SOOP 채팅 연결 기능은 현재 비활성화됨. 검색 기능만 사용 가능.`);
-  connectionStatus = 'search_only';
-  broadcast('status', { status: connectionStatus, streamerId: CONFIG.STREAMER_ID });
-  return;
-
-  /*
-  // 기존 SOOP 연결 코드 (soop-extension 필요)
   if (!CONFIG.STREAMER_ID) { connectionStatus = 'no_config'; broadcast('status', { status: connectionStatus }); return; }
   try {
     connectionStatus = 'connecting'; broadcast('status', { status: connectionStatus });
@@ -228,7 +281,183 @@ async function connectToSoop() {
 
     soopChat = client.chat(opts);
 
-  */
+    soopChat.on(SoopChatEvent.CONNECT, () => console.log(`✅ 채팅 서버 연결`));
+    soopChat.on(SoopChatEvent.ENTER_CHAT_ROOM, () => {
+      connectionStatus = 'connected';
+      broadcast('status', { status: connectionStatus, streamerId: CONFIG.STREAMER_ID });
+      console.log(`🎉 채팅방 입장! 이벤트 감지 시작`);
+    });
+
+    // ⭐ 별풍선
+    soopChat.on(SoopChatEvent.TEXT_DONATION, (d) => {
+      const amt = parseInt(d.amount) || 0;
+      const uid = d.from, nick = d.fromUsername;
+      if (isDuplicate(`balloon_${uid}_${amt}`)) return;
+      console.log(`⭐ 별풍선 ${nick}(${uid}) → ${amt}개`);
+      broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'balloon' });
+      const result = matchBalloon(uid, nick, amt, 'balloon');
+
+      let foundMsg = null;
+      if (global._recentChats) {
+        const recent = global._recentChats.find(c => normalizeUid(c.userId) === uid && (Date.now() - c.ts) < 60000);
+        if (recent) {
+          foundMsg = recent.comment;
+          console.log(`💬 직전 채팅에서 TTS 연결! ${nick}(${uid}): "${foundMsg}"`);
+          if (result) { result.message = foundMsg; broadcast('resultUpdate', result); }
+          broadcast('donationMsg', { userId: uid, userNickname: nick, amount: amt, message: foundMsg, time: now() });
+        }
+      }
+      if (!foundMsg) {
+        recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
+        setTimeout(() => { delete recentDonors[uid]; }, 60000);
+      }
+    });
+
+    // 🎈 애드벌룬
+    soopChat.on(SoopChatEvent.AD_BALLOON_DONATION, (d) => {
+      const amt = parseInt(d.amount) || 0;
+      const uid = d.from, nick = d.fromUsername;
+      if (isDuplicate(`adballoon_${uid}_${amt}`)) return;
+      console.log(`🎈 애드벌룬 ${nick}(${uid}) → ${amt}개`);
+      broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'adballoon' });
+      const result = matchBalloon(uid, nick, amt, 'adballoon');
+      recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
+      setTimeout(() => { delete recentDonors[uid]; }, 60000);
+    });
+
+    // 🎬 영상풍선
+    soopChat.on(SoopChatEvent.VIDEO_DONATION, (d) => {
+      const amt = parseInt(d.amount) || 0;
+      const uid = d.from, nick = d.fromUsername;
+      if (isDuplicate(`video_${uid}_${amt}`)) return;
+      console.log(`🎬 영상풍선 ${nick}(${uid}) → ${amt}개`);
+      broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'video' });
+      matchBalloon(uid, nick, amt, 'video');
+    });
+
+    // UNKNOWN 패킷
+    soopChat.on(SoopChatEvent.UNKNOWN, (parts) => {
+      const raw = Array.isArray(parts) ? parts.join('|') : String(parts);
+      if (isDuplicate(`unknown_${raw.substring(0, 100)}`)) return;
+      const entry = {
+        time: now(),
+        partsCount: Array.isArray(parts) ? parts.length : 0,
+        snippet: raw.substring(0, 300),
+        parts: Array.isArray(parts) ? parts.slice(0, 15).map(p => p.substring(0, 80)) : [],
+      };
+      unknownPackets.unshift(entry);
+      if (unknownPackets.length > 200) unknownPackets.pop();
+      broadcast('unknown', entry);
+    });
+
+    // 💬 채팅 → 후원 메시지 연결
+    soopChat.on(SoopChatEvent.CHAT, (d) => {
+      const rawUid = d.userId;
+      const uid = normalizeUid(rawUid);
+      const msg = d.comment;
+      if (isDuplicate(`chat_${uid}_${msg}`)) return;
+
+      const waiting = Object.keys(recentDonors);
+      if (waiting.length > 0) {
+        console.log(`💬 채팅수신 ${uid}: "${msg}" (대기중: ${waiting.join(',')})`);
+      }
+
+      if (recentDonors[uid] && msg) {
+        const donor = recentDonors[uid];
+        console.log(`✅ TTS 메시지 연결! ${donor.nick}(${uid}): "${msg}"`);
+        if (donor.resultId) {
+          const r = missionResults.find(r => r.id === donor.resultId);
+          if (r) { r.message = msg; broadcast('resultUpdate', r); }
+        }
+        broadcast('donationMsg', { userId: uid, userNickname: donor.nick, amount: donor.amount, message: msg, time: now() });
+        delete recentDonors[uid];
+      }
+    });
+
+    // RAW 패킷
+    soopChat.on(SoopChatEvent.RAW, (buffer) => {
+      try {
+        const str = buffer.toString('utf-8');
+        if (str.length >= 6) {
+          const typeCode = str.substring(2, 6);
+
+          if (['0018', '0087', '0105', '0121'].includes(typeCode)) {
+            const rawHash = str.substring(0, 100);
+            if (isDuplicate(`raw_${typeCode}_${rawHash}`)) return;
+            const SEP = '\f';
+            const parts = str.split(SEP);
+            const fieldDump = parts.map((p,i) => `[${i}] = "${p.substring(0,200).replace(/[\x00-\x1f]/g,'·')}"`).join('\n');
+            const debugLog = `[${new Date().toISOString()}] TYPE=${typeCode} PARTS=${parts.length}\n${fieldDump}\n${'='.repeat(60)}\n`;
+            fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
+
+            if (typeCode === '0018') {
+              const possibleMsgs = parts.filter((p, i) => {
+                if (i <= 5) return false;
+                const clean = p.replace(/[\x00-\x1f]/g, '').trim();
+                if (!clean || clean.length < 2) return false;
+                if (/^[0-9._-]+$/.test(clean)) return false;
+                if (/^[a-f0-9-]{36}$/i.test(clean)) return false;
+                if (/^[a-z]{2}_[A-Z]{2}$/.test(clean)) return false;
+                if (/^(kor_|typecast_|tts_)/i.test(clean)) return false;
+                if (clean === parts[1]?.replace(/[\x00-\x1f]/g,'').trim()) return false;
+                return true;
+              });
+              if (possibleMsgs.length > 0) {
+                fs.appendFile(path.join(__dirname, 'donation_debug.log'), `  → 텍스트 후보: ${JSON.stringify(possibleMsgs)}\n`, () => {});
+              }
+            }
+          }
+
+          if (typeCode === '0005') {
+            const SEP = '\f';
+            const chatParts = str.split(SEP);
+            const chatUserId = normalizeUid(chatParts[2]?.replace(/[\x00-\x1f]/g, '').trim());
+            const chatComment = chatParts[1]?.replace(/[\x00-\x1f]/g, '').trim();
+            if (chatUserId && chatComment) {
+              if (isDuplicate(`raw0005_${chatUserId}_${chatComment}`)) return;
+              if (!global._recentChats) global._recentChats = [];
+              global._recentChats.unshift({ ts: Date.now(), userId: chatUserId, comment: chatComment });
+              if (global._recentChats.length > 50) global._recentChats.pop();
+            }
+            if (chatUserId && recentDonors[chatUserId]) {
+              const debugLog = `[${new Date().toISOString()}] RAW_CHAT_AFTER_DONATION userId=${chatUserId} msg="${chatComment}"\n${'='.repeat(60)}\n`;
+              fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
+            }
+          }
+
+          if (typeCode === '0121') {
+            if (isDuplicate(`raw0121_${str.substring(0, 150)}`)) return;
+            console.log(`🎲 0121 패킷 감지! 길이: ${str.length}`);
+            parse0121(str);
+            const entry = { time: now(), typeCode, length: str.length, preview: str.substring(0, 400).replace(/[\x00-\x1f]/g, '·'), fullData: str.replace(/[\x00-\x1f]/g, '·') };
+            broadcast('rawUnknown', entry);
+            const logLine = `[${new Date().toISOString()}] TYPE=0121 LEN=${str.length}\nFULL: ${str.replace(/[\x00-\x1f]/g, '·')}\n${'='.repeat(80)}\n`;
+            fs.appendFile(path.join(__dirname, 'unknown_packets.log'), logLine, () => {});
+          }
+          else if (!KNOWN_TYPES.has(typeCode)) {
+            const entry = { time: now(), typeCode, length: str.length, preview: str.substring(0, 300).replace(/[\x00-\x1f]/g, '·') };
+            broadcast('rawUnknown', entry);
+            const logLine = `[${new Date().toISOString()}] TYPE=${typeCode} LEN=${str.length} DATA=${str.substring(0, 500).replace(/[\x00-\x1f]/g, '·')}\n`;
+            fs.appendFile(path.join(__dirname, 'unknown_packets.log'), logLine, () => {});
+          }
+        }
+      } catch(e) {}
+    });
+
+    soopChat.on(SoopChatEvent.DISCONNECT, () => {
+      connectionStatus = 'disconnected';
+      broadcast('status', { status: connectionStatus });
+      console.log('❌ 연결 끊김. 10초 후 재연결');
+      scheduleReconnect();
+    });
+
+    await soopChat.connect();
+  } catch (e) {
+    console.error(`❌ 연결 실패: ${e.message}`);
+    connectionStatus = 'error';
+    broadcast('status', { status: connectionStatus, error: e.message });
+    scheduleReconnect();
+  }
 }
 
 function scheduleReconnect() {
@@ -248,8 +477,19 @@ function getSOOPProfileImage(streamerId) {
   return imageUrl;
 }
 
+// SOOP BJ 검색 캐시 (5분 TTL)
+const searchCache = new Map();
+const SEARCH_CACHE_TTL = 5 * 60 * 1000;
+
 // SOOP BJ 검색 API (sch.sooplive.co.kr)
 async function searchSOOPStreamers(query) {
+  // 캐시 확인
+  const cacheKey = query.toLowerCase().trim();
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.ts < SEARCH_CACHE_TTL) {
+    return cached.data;
+  }
+
   const https = require('https');
   return new Promise((resolve) => {
     const url = `https://sch.sooplive.co.kr/api.php?m=bjSearch&v=1.0&szKeyword=${encodeURIComponent(query)}&nPageNo=1&nLimit=30`;
@@ -266,7 +506,7 @@ async function searchSOOPStreamers(query) {
         try {
           const json = JSON.parse(data);
           if (json.DATA && json.DATA.length > 0) {
-            resolve(json.DATA
+            const results = json.DATA
               .filter(d => (parseInt(d.favorite_cnt) || 0) >= 1000)
               .map(d => ({
                 id: d.user_id,
@@ -274,8 +514,11 @@ async function searchSOOPStreamers(query) {
                 profileImage: d.station_logo || getSOOPProfileImage(d.user_id),
                 channelUrl: `https://ch.sooplive.co.kr/${d.user_id}`,
                 favorite_cnt: d.favorite_cnt || 0
-              })));
+              }));
+            searchCache.set(cacheKey, { ts: Date.now(), data: results });
+            resolve(results);
           } else {
+            searchCache.set(cacheKey, { ts: Date.now(), data: [] });
             resolve([]);
           }
         } catch(e) {
@@ -305,14 +548,23 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'OPTIONS') { res.writeHead(200); res.end(); return; }
   const body = () => new Promise(r => { let b=''; req.on('data',c=>b+=c); req.on('end',()=>r(JSON.parse(b||'{}'))); });
-  const json = (d, c=200) => { res.writeHead(c, {'Content-Type':'application/json'}); res.end(JSON.stringify(d)); };
-  const authOk = () => req.headers['x-auth'] === VALID_TOKEN;
+  const cookieToken = (req.headers.cookie || '').split(';').map(c=>c.trim()).find(c=>c.startsWith('mk_token='));
+  const cookieVal = cookieToken ? cookieToken.split('=')[1] : '';
+  const setCookie = (token) => `mk_token=${token}; Path=/; Max-Age=2592000; SameSite=Lax`;
+  const json = (d, c=200, extra={}) => { res.writeHead(c, {'Content-Type':'application/json', ...extra}); res.end(JSON.stringify(d)); };
+  const authOk = () => req.headers['x-auth'] === VALID_TOKEN || cookieVal === VALID_TOKEN;
+
+  // 토큰 검증
+  if (url.pathname === '/api/verify' && req.method === 'GET') {
+    if (authOk()) return json({ ok: true });
+    return json({ ok: false }, 401);
+  }
 
   // 인증
   if (url.pathname === '/api/auth' && req.method === 'POST') {
     body().then(d => {
       if (d.password === CONFIG.ADMIN_PASSWORD) {
-        json({ ok: true, token: VALID_TOKEN });
+        json({ ok: true, token: VALID_TOKEN }, 200, {'Set-Cookie': setCookie(VALID_TOKEN)});
       } else {
         json({ ok: false, error: '비밀번호가 틀렸습니다' }, 401);
       }
@@ -324,7 +576,7 @@ const server = http.createServer((req, res) => {
     body().then(d => {
       if (!d.newPassword || d.newPassword.length < 4) return json({ ok: false, error: '4자 이상 입력' }, 400);
       savePassword(d.newPassword);
-      json({ ok: true, token: VALID_TOKEN });
+      json({ ok: true, token: VALID_TOKEN }, 200, {'Set-Cookie': setCookie(VALID_TOKEN)});
       console.log(`🔑 비밀번호 변경됨: ${d.newPassword}`);
     }); return;
   }
@@ -341,6 +593,45 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // 스트레스 테스트용 (별풍선 시뮬레이션)
+  if (url.pathname === '/api/test-balloon' && req.method === 'POST') {
+    body().then(d => {
+      const { userId, userNickname, amount, eventType, message } = d;
+      if (!userId || !amount) return json({ ok: false, error: 'userId, amount 필수' }, 400);
+      broadcast('balloon', { userId, userNickname, amount, type: eventType || 'balloon', time: now() });
+      const result = matchBalloon(userId, userNickname, parseInt(amount), eventType || 'balloon');
+      if (result && message) {
+        result.message = message;
+        broadcast('resultUpdate', result);
+      } else if (result && !message) {
+        // 분리전송: 메시지 없이 별풍선만 → recentDonors에 등록 (나중에 채팅으로 연결)
+        recentDonors[userId] = { timestamp: Date.now(), resultId: result.id, nick: userNickname, amount: parseInt(amount) };
+        setTimeout(() => { delete recentDonors[userId]; }, 60000);
+      }
+      json({ ok: true, matched: !!result, id: result?.id, hasMessage: !!message });
+    }); return;
+  }
+
+  // 스트레스 테스트용 (채팅 시뮬레이션 — 별풍선 후 메시지 따로 보내기)
+  if (url.pathname === '/api/test-chat' && req.method === 'POST') {
+    body().then(d => {
+      const { userId, message } = d;
+      if (!userId || !message) return json({ ok: false, error: 'userId, message 필수' }, 400);
+      if (recentDonors[userId]) {
+        const donor = recentDonors[userId];
+        if (donor.resultId) {
+          const r = missionResults.find(r => r.id === donor.resultId);
+          if (r) { r.message = message; broadcast('resultUpdate', r); }
+        }
+        broadcast('donationMsg', { userId, userNickname: donor.nick, amount: donor.amount, message, time: now() });
+        delete recentDonors[userId];
+        json({ ok: true, linked: true });
+      } else {
+        json({ ok: true, linked: false, reason: 'no recent donor' });
+      }
+    }); return;
+  }
+
   // 인증 필요한 API들
   const needsAuth = ['/api/templates','/api/templates/update','/api/templates/delete','/api/templates/toggle','/api/auto-threshold','/api/results/reset','/api/config','/api/reconnect','/api/export-sheets'];
   if (needsAuth.includes(url.pathname) && req.method === 'POST' && !authOk()) {
@@ -350,7 +641,7 @@ const server = http.createServer((req, res) => {
   // 템플릿
   if (url.pathname === '/api/templates' && req.method === 'POST') {
     body().then(d => {
-      const t = { id: Date.now(), name: d.name||'미션', starCount: parseInt(d.starCount)||500, eventType: d.eventType||'all', collectDomain: d.collectDomain!==false, collectMessage: d.collectMessage===true, active: true, category: d.category||'일반' };
+      const t = { id: Date.now(), name: d.name||'미션', starCount: parseInt(d.starCount)||500, eventType: d.eventType||'all', collectDomain: d.collectDomain!==false, collectMessage: d.collectMessage===true, active: true };
       missionTemplates.push(t);
       missionTemplates.sort((a,b) => b.starCount - a.starCount);
       broadcast('templates', missionTemplates); json({ok:true});
@@ -365,7 +656,6 @@ const server = http.createServer((req, res) => {
         if(d.eventType!==undefined) t.eventType=d.eventType;
         if(d.collectDomain!==undefined) t.collectDomain=d.collectDomain;
         if(d.collectMessage!==undefined) t.collectMessage=d.collectMessage;
-        if(d.category!==undefined) t.category=d.category;
         missionTemplates.sort((a,b)=>b.starCount-a.starCount);
       }
       broadcast('templates', missionTemplates); json({ok:true});
@@ -402,15 +692,6 @@ const server = http.createServer((req, res) => {
     missionResults=[]; broadcast('resetResults',{}); return json({ok:true});
   }
 
-  // 결과 필터링
-  if (url.pathname === '/api/results/filter' && req.method === 'GET') {
-    const category = url.searchParams.get('category');
-    let filteredResults = missionResults;
-    if (category && category !== '전체') {
-      filteredResults = missionResults.filter(r => r.category === category);
-    }
-    return json({ results: filteredResults, categories: [...new Set(missionResults.map(r => r.category))] });
-  }
 
   // 설정
   if (url.pathname === '/api/config' && req.method === 'GET') return json({streamerId:CONFIG.STREAMER_ID, autoThreshold});
@@ -486,163 +767,166 @@ const server = http.createServer((req, res) => {
     return; // 여기서 끝
   }
 
+  // DeepLol 스트리머 계정 조회 (프록시) - 캐시 포함
+  if (url.pathname === '/api/streamer-lol' && req.method === 'GET') {
+    const name = url.searchParams.get('name');
+    if (!name) return json({ ok: false, error: 'name 파라미터 필요' }, 400);
+    // 캐시 (10분)
+    if (!global._lolCache) global._lolCache = new Map();
+    const cacheKey = name.toLowerCase();
+    const cached = global._lolCache.get(cacheKey);
+    if (cached && Date.now() - cached.ts < 600000) return json(cached.data);
+    const _https = require('https');
+    const zlib = require('zlib');
+    function fetchDeepLol(queryName, status) {
+      return new Promise((resolve) => {
+        const apiUrl = `https://b2c-api-cdn.deeplol.gg/summoner/strm_pro_info?name=${encodeURIComponent(queryName)}&status=${status}`;
+        _https.get(apiUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Encoding': 'gzip, deflate, br' } }, (resp) => {
+          let stream = resp;
+          const enc = resp.headers['content-encoding'];
+          if (enc === 'gzip') stream = resp.pipe(zlib.createGunzip());
+          else if (enc === 'deflate') stream = resp.pipe(zlib.createInflate());
+          else if (enc === 'br') stream = resp.pipe(zlib.createBrotliDecompress());
+          let data = '';
+          stream.on('data', c => data += c);
+          stream.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { resolve(null); } });
+          stream.on('error', () => resolve(null));
+        }).on('error', () => resolve(null));
+      });
+    }
+    (async () => {
+      try {
+        const ok = (r) => r && r.account_list && r.account_list.length > 0;
+        const names = [name];
+        const cleaned = name.replace(/[^가-힣a-zA-Z0-9]+$/g, '').trim();
+        if (cleaned && cleaned !== name) names.push(cleaned);
+        for (const status of ['streamer', 'pro']) {
+          for (const n of names) {
+            const r = await fetchDeepLol(n, status);
+            if (ok(r)) { global._lolCache.set(cacheKey, { ts: Date.now(), data: r }); return json(r); }
+          }
+        }
+        json({ account_list: [], searchName: name });
+      } catch(e) { json({ account_list: [], searchName: name, error: e.message }); }
+    })();
+    return;
+  }
+
   // Google Sheets 추출 (직접 API)
   if (url.pathname === '/api/export-sheets' && req.method === 'POST') {
     if (!authOk()) return json({ ok: false, error: '인증 필요' }, 401);
     if (!missionResults.length) return json({ ok: false, error: '추출할 데이터가 없습니다' }, 400);
-    body().then(async (reqData) => {
-      const filterCategory = reqData.category;
-      let dataToExport = missionResults;
-      if (filterCategory && filterCategory !== '전체') {
-        dataToExport = missionResults.filter(r => r.category === filterCategory);
-      }
+    body().then(async () => {
       try {
-        const auth = new google.auth.GoogleAuth({
-          scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
-        });
+        let auth;
+        if (process.env.GCP_CREDENTIALS) {
+          const creds = JSON.parse(process.env.GCP_CREDENTIALS);
+          if (creds.type === 'service_account') {
+            auth = new google.auth.GoogleAuth({
+              credentials: creds,
+              scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
+            });
+          } else {
+            const oauth2 = new google.auth.OAuth2(creds.client_id, creds.client_secret);
+            oauth2.setCredentials({ refresh_token: creds.refresh_token });
+            if (creds.quota_project_id) oauth2.quotaProjectId = creds.quota_project_id;
+            auth = oauth2;
+          }
+        } else {
+          auth = new google.auth.GoogleAuth({
+            scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
+          });
+        }
         const sheets = google.sheets({ version: 'v4', auth });
 
-        const typeName = {balloon:'별풍선',adballoon:'애드벌룬',video:'영상풍선',mission:'대결미션'};
+        const typeName = {balloon:'별풍선',adballoon:'애드벌룬',video:'영상풍선',mission:'대결미션',challenge:'도전미션'};
         const d = new Date();
         const dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        const categoryFilter = filterCategory && filterCategory !== '전체' ? `_${filterCategory}` : '';
-        const title = `MK미션${categoryFilter}_${dateStr}`;
-        const header = ['카테고리','미션명','타입','개수','닉네임','유저ID','방송국링크','메시지','상태','시간','확인'];
-        const rows = dataToExport.map(r => ([
-          r.category||'일반', r.templateName||'', typeName[r.eventType||'balloon']||'', r.amount||0,
-          r.userNickname||'', r.userId||'',
-          r.channelUrl||'', r.message||'',
-          r.completed?'완료':'진행중', r.createdAt||'',
-          r.completed?true:false  // 확인 열에 체크박스 초기값 설정
-        ]));
+        const title = `MK미션_${dateStr}`;
+        // A:미션이름 B:타입 C:개수 D:닉네임 E:유저ID F:방송국링크 G:메시지 H:시간 I:확인(체크박스) J:상태(수식)
+        const header = ['미션이름','타입','개수','닉네임','유저ID','방송국링크','메시지','시간','확인','상태'];
 
-        // 1) 새 스프레드시트 생성
+        // 미션이름별 그룹핑
+        const grouped = {};
+        for (const r of missionResults) {
+          const name = r.templateName || '기타';
+          if (!grouped[name]) grouped[name] = [];
+          grouped[name].push(r);
+        }
+        const missionNames = Object.keys(grouped);
+
+        // 1) 새 스프레드시트 생성 (미션별 시트 탭)
+        const sheetDefs = missionNames.map((name, i) => ({
+          properties: { sheetId: i, title: name, gridProperties: { frozenRowCount: 1 } }
+        }));
         const ss = await sheets.spreadsheets.create({
           requestBody: {
             properties: { title },
-            sheets: [{ properties: { sheetId: 0, title: '미션 결과', gridProperties: { frozenRowCount: 1 } } }],
+            sheets: sheetDefs,
           },
         });
         const ssId = ss.data.spreadsheetId;
         const ssUrl = ss.data.spreadsheetUrl;
-        console.log(`📊 스프레드시트 생성: ${title} → ${ssUrl}`);
+        console.log(`📊 스프레드시트 생성: ${title} (${missionNames.length}개 시트) → ${ssUrl}`);
 
-        // 2) 데이터 입력
-        await sheets.spreadsheets.values.update({
+        // 2) 각 시트에 데이터 입력 (확인=FALSE, 상태=수식)
+        const valueData = missionNames.map(name => ({
+          range: `'${name}'!A1`,
+          values: [header, ...grouped[name].map((r, i) => ([
+            r.templateName||'', typeName[r.eventType||'balloon']||'', r.amount||0,
+            r.userNickname||'', r.userId||'',
+            r.channelUrl||'', r.message||'',
+            r.createdAt||'',
+            r.completed ? true : false,
+            `=IF(I${i+2},"완료","진행중")`
+          ]))]
+        }));
+        await sheets.spreadsheets.values.batchUpdate({
           spreadsheetId: ssId,
-          range: '미션 결과!A1',
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [header, ...rows] },
+          requestBody: { valueInputOption: 'USER_ENTERED', data: valueData },
         });
 
         // 3) 모든 사용자에게 편집 권한 부여
         const drive = google.drive({ version: 'v3', auth });
         await drive.permissions.create({
           fileId: ssId,
-          requestBody: {
-            role: 'writer',
-            type: 'anyone'
-          },
+          requestBody: { role: 'writer', type: 'anyone' },
         });
-        console.log(`🔓 스프레드시트 권한 설정: 모든 사용자 편집 가능`);
 
-        // 4) 서식 (헤더 색상, 체크박스, 열 너비, 링크 색)
-        const reqs = [
+        // 4) 각 시트 서식
+        const reqs = [];
+        const colWidths = [120, 80, 60, 120, 120, 250, 250, 100, 60, 80];
+        missionNames.forEach((name, sheetIdx) => {
+          const rows = grouped[name];
+          const rowCount = rows.length;
           // 헤더 배경색 + 흰 글씨 + 볼드
-          { repeatCell: { range: { sheetId:0, startRowIndex:0, endRowIndex:1 }, cell: { userEnteredFormat: { backgroundColor:{red:.18,green:.49,blue:.2}, textFormat:{bold:true,foregroundColor:{red:1,green:1,blue:1}}, horizontalAlignment:'CENTER' } }, fields:'userEnteredFormat' } },
-          // 확인 열 체크박스 (K열 = index 10, 카테고리 추가로 1 증가)
-          { repeatCell: { range: { sheetId:0, startRowIndex:1, endRowIndex:rows.length+1, startColumnIndex:10, endColumnIndex:11 }, cell: { dataValidation: { condition: { type:'BOOLEAN' } } }, fields:'dataValidation' } },
-          // 열 너비 자동
-          { autoResizeDimensions: { dimensions: { sheetId:0, dimension:'COLUMNS', startIndex:0, endIndex:11 } } },
-        ];
-
-        // 상태 열 색상 (I열 = index 8, 카테고리 추가로 1 증가)
-        rows.forEach((r, i) => {
-          const color = r[8]==='완료' ? {red:.83,green:.18,blue:.18} : {red:.18,green:.49,blue:.2};
-          reqs.push({ repeatCell: { range:{ sheetId:0, startRowIndex:i+1, endRowIndex:i+2, startColumnIndex:8, endColumnIndex:9 }, cell:{ userEnteredFormat:{ textFormat:{ bold:true, foregroundColor:color } } }, fields:'userEnteredFormat.textFormat' } });
+          reqs.push({ repeatCell: { range: { sheetId:sheetIdx, startRowIndex:0, endRowIndex:1 }, cell: { userEnteredFormat: { backgroundColor:{red:.18,green:.49,blue:.2}, textFormat:{bold:true,foregroundColor:{red:1,green:1,blue:1}}, horizontalAlignment:'CENTER' } }, fields:'userEnteredFormat' } });
+          // 확인 열 체크박스 (I열 = index 8)
+          if (rowCount > 0) {
+            reqs.push({ repeatCell: { range: { sheetId:sheetIdx, startRowIndex:1, endRowIndex:rowCount+1, startColumnIndex:8, endColumnIndex:9 }, cell: { dataValidation: { condition: { type:'BOOLEAN' } } }, fields:'dataValidation' } });
+          }
+          // 열 너비 명시 설정
+          colWidths.forEach((w, ci) => {
+            reqs.push({ updateDimensionProperties: { range: { sheetId:sheetIdx, dimension:'COLUMNS', startIndex:ci, endIndex:ci+1 }, properties: { pixelSize: w }, fields:'pixelSize' } });
+          });
+          // 상태 열 색상 (J열 = index 9) — 조건부 서식으로 완료=빨강, 진행중=초록
+          if (rowCount > 0) {
+            reqs.push({ addConditionalFormatRule: { rule: { ranges: [{ sheetId:sheetIdx, startRowIndex:1, endRowIndex:rowCount+1, startColumnIndex:9, endColumnIndex:10 }], booleanRule: { condition: { type:'TEXT_EQ', values:[{userEnteredValue:'완료'}] }, format: { textFormat: { bold:true, foregroundColor:{red:.83,green:.18,blue:.18} } } } }, index:0 } });
+            reqs.push({ addConditionalFormatRule: { rule: { ranges: [{ sheetId:sheetIdx, startRowIndex:1, endRowIndex:rowCount+1, startColumnIndex:9, endColumnIndex:10 }], booleanRule: { condition: { type:'TEXT_EQ', values:[{userEnteredValue:'진행중'}] }, format: { textFormat: { bold:true, foregroundColor:{red:.18,green:.49,blue:.2} } } } }, index:1 } });
+          }
+          // 방송국 링크 열 파란색 (F열 = index 5)
+          if (rowCount > 0) {
+            reqs.push({ repeatCell: { range:{ sheetId:sheetIdx, startRowIndex:1, endRowIndex:rowCount+1, startColumnIndex:5, endColumnIndex:6 }, cell:{ userEnteredFormat:{ textFormat:{ foregroundColor:{red:.1,green:.45,blue:.91} } } }, fields:'userEnteredFormat.textFormat.foregroundColor' } });
+          }
         });
-
-        // 방송국 링크 열 파란색 (G열 = index 6, 카테고리 추가로 1 증가)
-        if (rows.length > 0) {
-          reqs.push({ repeatCell: { range:{ sheetId:0, startRowIndex:1, endRowIndex:rows.length+1, startColumnIndex:6, endColumnIndex:7 }, cell:{ userEnteredFormat:{ textFormat:{ foregroundColor:{red:.1,green:.45,blue:.91} } } }, fields:'userEnteredFormat.textFormat.foregroundColor' } });
-        }
 
         await sheets.spreadsheets.batchUpdate({ spreadsheetId: ssId, requestBody: { requests: reqs } });
 
-        // 5) Google Apps Script 추가 (H열과 J열 동기화)
-        const script = google.script({ version: 'v1', auth });
-        try {
-          // Apps Script 프로젝트 생성
-          const scriptProject = await script.projects.create({
-            requestBody: {
-              title: `MK미션_스크립트_${Date.now()}`,
-              parentId: ssId
-            }
-          });
-
-          // 동기화 스크립트 코드 (카테고리 추가로 열 인덱스 1씩 증가)
-          const scriptCode = `
-function onEdit(e) {
-  const sheet = e.source.getActiveSheet();
-  const range = e.range;
-  const row = range.getRow();
-  const col = range.getColumn();
-
-  // 헤더 행은 제외
-  if (row <= 1) return;
-
-  // I열(상태) 변경 시 K열(확인) 업데이트 (카테고리 추가로 1 증가)
-  if (col === 9) { // I열
-    const statusValue = range.getValue();
-    const checkCell = sheet.getRange(row, 11); // K열
-
-    if (statusValue === '완료') {
-      checkCell.setValue(true);
-    } else if (statusValue === '진행중') {
-      checkCell.setValue(false);
-    }
-  }
-
-  // K열(확인) 변경 시 I열(상태) 업데이트 (카테고리 추가로 1 증가)
-  if (col === 11) { // K열
-    const checkValue = range.getValue();
-    const statusCell = sheet.getRange(row, 9); // I열
-
-    if (checkValue === true) {
-      statusCell.setValue('완료');
-    } else if (checkValue === false) {
-      statusCell.setValue('진행중');
-    }
-  }
-}`;
-
-          // 스크립트 파일 업데이트
-          await script.projects.updateContent({
-            scriptId: scriptProject.data.scriptId,
-            requestBody: {
-              files: [
-                {
-                  name: 'Code',
-                  type: 'SERVER_JS',
-                  source: scriptCode
-                }
-              ]
-            }
-          });
-
-          console.log(`📜 Apps Script 동기화 스크립트 추가 완료`);
-        } catch(scriptError) {
-          console.log(`⚠️ Apps Script 추가 실패 (권한 문제일 수 있음): ${scriptError.message}`);
-        }
-
         json({ ok: true, url: ssUrl });
       } catch(e) {
-        console.error(`📊 Sheets 오류:`, e.message);
-        if (e.message.includes('insufficient') || e.message.includes('scope') || e.message.includes('auth')) {
-          json({ ok: false, error: '인증 갱신 필요: 터미널에서 gcloud auth application-default login --scopes=https://www.googleapis.com/auth/spreadsheets,https://www.googleapis.com/auth/drive 실행' });
-        } else {
-          json({ ok: false, error: e.message });
-        }
+        console.error(`📊 Sheets 오류:`, e.message, e.code || '', e.status || '');
+        if (e.response?.data) console.error(`📊 상세:`, JSON.stringify(e.response.data).substring(0, 500));
+        json({ ok: false, error: e.message });
       }
     }); return;
   }
@@ -655,20 +939,50 @@ function onEdit(e) {
     }); return;
   }
 
-  // 메인 대시보드
-  if (url.pathname === '/' || url.pathname === '/index.html') {
+  // 대시보드 (미션매니저)
+  if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/mission' || url.pathname === '/dashboard.html') {
+    fs.readFile(path.join(__dirname, 'dashboard.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // 팀뽑기
+  if (url.pathname === '/team') {
     fs.readFile(path.join(__dirname, 'main-dashboard.html'), (e, d) => {
       if(e){res.writeHead(500);res.end('err');return;}
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
     }); return;
   }
 
-  // 미션매니저 대시보드
-  if (url.pathname === '/mission' || url.pathname === '/dashboard.html') {
-    fs.readFile(path.join(__dirname, 'dashboard.html'), (e, d) => {
+  // 사다리 타기
+  if (url.pathname === '/ladder') {
+    fs.readFile(path.join(__dirname, 'ladder.html'), (e, d) => {
       if(e){res.writeHead(500);res.end('err');return;}
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
     }); return;
+  }
+
+  // 팀뽑기 공유용 (로그인 불필요)
+  if (url.pathname === '/pick') {
+    fs.readFile(path.join(__dirname, 'pick.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // 지통실 (멀티 스트림 뷰어)
+  if (url.pathname === '/control') {
+    fs.readFile(path.join(__dirname, 'control.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // 헬스체크
+  if (url.pathname === '/health') {
+    json({ status: 'ok', uptime: process.uptime() });
+    return;
   }
 
   json({error:'Not Found'}, 404);
@@ -696,7 +1010,7 @@ server.listen(CONFIG.PORT, () => {
       if(k?.trim()==='SOOP_PASSWORD'&&!CONFIG.SOOP_PASSWORD) CONFIG.SOOP_PASSWORD=v;
     });
   } catch(e){}
-  loadOrCreatePassword();
+  loadOrCreateAuth();
   console.log(`║   🔑 비밀번호: ${CONFIG.ADMIN_PASSWORD}               ║`);
   console.log(`║   📊 구글시트: API 직접 연동          ║`);
 
