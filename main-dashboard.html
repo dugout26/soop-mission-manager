@@ -3577,7 +3577,7 @@ async function startRandomTeamDraft(){
   teamA = [];
   teamB = [];
 
-  diceResultText.textContent = '포지션 배정 중...';
+  diceResultText.textContent = (shuffleStreamer && shufflePosition) ? '팀 & 포지션 배정 중...' : shufflePosition ? '포지션 배정 중...' : '팀 배정 중...';
   diceResultText.style.animation = 'none';
   void diceResultText.offsetWidth;
   diceResultText.style.animation = 'fadeInUp .5s forwards';
