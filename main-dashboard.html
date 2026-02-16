@@ -83,7 +83,7 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 .event-bar .event-text{flex:1;color:var(--text2)}
 .event-bar .event-text span{color:var(--green);font-weight:700}
 
-/* 맞벨 체크박스 */
+/* 맞밸 체크박스 */
 .match-check{display:flex;flex-direction:column;align-items:center;gap:2px;padding:0 4px}
 .match-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);cursor:pointer}
 .match-check .match-label{font-size:8px;color:var(--green);font-weight:700}
@@ -317,12 +317,12 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
         <button onclick="selectGameMode('solo')" style="flex:1;max-width:280px;padding:24px 20px;background:var(--card2);border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="font-size:32px;margin-bottom:8px">🎮</div>
           <div style="font-size:18px;font-weight:900;color:var(--green);margin-bottom:4px">솔랭 내기</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.5">맞벨을 <span style="color:var(--green);font-weight:700">수동</span>으로 설정<br>원하는 멤버끼리만 맞벨 체크</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.5">맞밸을 <span style="color:var(--green);font-weight:700">수동</span>으로 설정<br>원하는 멤버끼리만 맞밸 체크</div>
         </button>
         <button onclick="selectGameMode('land')" style="flex:1;max-width:280px;padding:24px 20px;background:var(--card2);border:2px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;font-family:inherit" onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='var(--border)'">
           <div style="font-size:32px;margin-bottom:8px">🏰</div>
           <div style="font-size:18px;font-weight:900;color:var(--yellow);margin-bottom:4px">랜드 / CK</div>
-          <div style="font-size:11px;color:var(--text2);line-height:1.5">전원 <span style="color:var(--yellow);font-weight:700">자동 맞벨</span><br>A,B C,D 순서대로 2인 1조</div>
+          <div style="font-size:11px;color:var(--text2);line-height:1.5">전원 <span style="color:var(--yellow);font-weight:700">자동 맞밸</span><br>A,B C,D 순서대로 2인 1조</div>
         </button>
       </div>
     </div>
@@ -632,7 +632,7 @@ let currentTab = 'mission';
 let todayMembers = JSON.parse(localStorage.getItem('mk_today_members') || '[]');
 let gameHistory = JSON.parse(localStorage.getItem('mk_ladder_history') || '[]');
 
-// 게임 모드: 'solo' (솔랭내기) or 'land' (랜드/CK - 전원 맞벨)
+// 게임 모드: 'solo' (솔랭내기) or 'land' (랜드/CK - 전원 맞밸)
 let gameMode = '';
 
 // 사다리 상태
@@ -703,7 +703,7 @@ let landSlots = [null,null,null,null,null,null,null,null,null,null];
 let soloSlots = Array(10).fill(null);
 let soloNumPairs = 5; // 초기 페어 수 (동적으로 추가/삭제)
 
-// 맞벨 (솔랭: 수동 / 랜드CK: 전원 기본 맞벨)
+// 맞밸 (솔랭: 수동 / 랜드CK: 전원 기본 맞밸)
 let matchedPairs = new Map(); // memberId -> partnerId
 
 // 인증 (쿠키 기반)
@@ -758,18 +758,18 @@ function selectGameMode(mode){
     for(let i = 0; i < todayMembers.length && i < 10; i++){
       landSlots[i] = todayMembers[i];
     }
-    logEvent('랜드/CK 모드: 전원 자동 맞벨! 멤버를 등록하세요.');
+    logEvent('랜드/CK 모드: 전원 자동 맞밸! 멤버를 등록하세요.');
   }
   updateTodayMembersList();
   updateMatchPairs();
 }
 
-// ========== 맞벨 페어 업데이트 ==========
+// ========== 맞밸 페어 업데이트 ==========
 function updateMatchPairs(){
   matchedPairs.clear();
   const slots = gameMode === 'solo' ? soloSlots : landSlots;
   if(gameMode === 'land'){
-    // 랜드/CK: 슬롯 페어 기반 맞벨 (0-1, 2-3, 4-5, 6-7, 8-9) — 전원 자동 맞벨
+    // 랜드/CK: 슬롯 페어 기반 맞밸 (0-1, 2-3, 4-5, 6-7, 8-9) — 전원 자동 맞밸
     for(let i = 0; i < 10; i += 2){
       const a = slots[i];
       const b = slots[i + 1];
@@ -779,7 +779,7 @@ function updateMatchPairs(){
       }
     }
   }
-  // 솔랭은 수동 맞벨이므로 여기서 자동 설정하지 않음
+  // 솔랭은 수동 맞밸이므로 여기서 자동 설정하지 않음
 }
 
 // slots에서 todayMembers 동기화
@@ -807,10 +807,10 @@ function removeSoloPair(){
   updateTodayMembersList();
 }
 
-// ========== 맞벨 수동 토글 (솔랭 모드) ==========
+// ========== 맞밸 수동 토글 (솔랭 모드) ==========
 function toggleManualMatch(memberId1, memberId2, checked){
   if(checked){
-    // 기존 맞벨 해제
+    // 기존 맞밸 해제
     if(matchedPairs.has(memberId1)){
       const oldPartner = matchedPairs.get(memberId1);
       matchedPairs.delete(oldPartner);
@@ -1754,7 +1754,7 @@ async function draftPick(member){
   // 풀에서 제거
   draftPool = draftPool.filter(m => m.id !== member.id);
 
-  // 맞벨 처리: 파트너는 반대팀으로 같은 포지션 자동 배정
+  // 맞밸 처리: 파트너는 반대팀으로 같은 포지션 자동 배정
   const partnerId = matchedPairs.get(member.id);
   if(partnerId){
     const partnerInPool = draftPool.find(m => m.id === partnerId);
@@ -1767,7 +1767,7 @@ async function draftPick(member){
       if(oppositeTeam === 'A'){ teamA.push(partnerMember); usedRolesA.push(role.key); }
       else { teamB.push(partnerMember); usedRolesB.push(role.key); }
       draftPool = draftPool.filter(m => m.id !== partnerId);
-      logEvent('맞벨! ' + partnerInPool.name + ' → ' + oppositeTeam + '팀 ' + role.name + ' 자동 배정');
+      logEvent('맞밸! ' + partnerInPool.name + ' → ' + oppositeTeam + '팀 ' + role.name + ' 자동 배정');
     }
   }
 
@@ -2614,7 +2614,7 @@ function updateTodayMembersList() {
       row.appendChild(createSoloSlot(posIdx * 2));
       row.appendChild(createSoloSlot(posIdx * 2 + 1));
 
-      // 맞벨 체크박스 (수동)
+      // 맞밸 체크박스 (수동)
       if(!membersConfirmed){
         const memberA = soloSlots[posIdx * 2];
         const memberB = soloSlots[posIdx * 2 + 1];
@@ -2624,7 +2624,7 @@ function updateTodayMembersList() {
           matchCheck.className = 'match-check';
           matchCheck.innerHTML = '<input type="checkbox" ' + (isMatched ? 'checked' : '') +
             ' onchange="event.stopPropagation();toggleManualMatch(\'' + memberA.id + '\', \'' + memberB.id + '\', this.checked)">' +
-            '<span class="match-label">맞벨</span>';
+            '<span class="match-label">맞밸</span>';
           row.appendChild(matchCheck);
         }
 
@@ -3733,7 +3733,7 @@ async function confirmCustomSettings(){
   teamA = [{ name: customPicker.name, id: customPicker.id, img: pickerImg, role: pickerRole.icon + ' ' + pickerRole.name }];
   teamB = [];
 
-  // 커스텀 픽커의 맞벨 파트너 → B팀 (같은 포지션)
+  // 커스텀 픽커의 맞밸 파트너 → B팀 (같은 포지션)
   const pickerPartnerId = matchedPairs.get(customPicker.id);
   if(pickerPartnerId){
     const partner = todayMembers.find(m => m.id === pickerPartnerId);
