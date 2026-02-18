@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MK 명단</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#080f0a;--card:#0f1a12;--card2:#162219;--blue:#4ade80;--orange:#f97316;--green:#22c55e;--red:#ef4444;--purple:#86efac;--cyan:#6ee7b7;--yellow:#eab308;--text:#f1f4f1;--text2:#88a090;--muted:#557060;--border:#1e3625}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;min-height:100vh}
+.container{max-width:960px;margin:0 auto;padding:12px 16px}
+
+/* 헤더 */
+.header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.logo{font-family:'Black Han Sans',sans-serif;font-size:22px;background:linear-gradient(135deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.logo img{width:32px;height:32px;border-radius:6px}
+.logo a{font-family:'Noto Sans KR',sans-serif;font-weight:700}
+
+/* 카드 */
+.sec{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px}
+.sec h2{font-size:14px;color:var(--green);margin-bottom:10px;font-weight:700}
+
+/* 설정 행 */
+.cfg{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px}
+.cfg label{color:var(--text2);font-weight:700}
+.cfg input[type=number]{width:70px;padding:5px 8px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;font-family:inherit;text-align:center}
+.cfg input[type=number]:focus{outline:none;border-color:var(--green)}
+
+/* 타입 필터 (다중선택) */
+.filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.ft{padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.ft:hover{background:var(--card2)}
+.ft.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ft.type-ft.active{font-weight:800;border-width:2px}
+.ft.type-ft.active[data-type="all"]{background:rgba(74,222,128,.25);border-color:var(--blue);color:var(--blue)}
+.ft.type-ft.active[data-type="balloon"]{background:rgba(74,222,128,.25);border-color:var(--blue);color:var(--blue)}
+.ft.type-ft.active[data-type="adballoon"]{background:rgba(134,239,172,.25);border-color:var(--purple);color:var(--purple)}
+.ft.type-ft.active[data-type="mission"]{background:rgba(234,179,8,.25);border-color:var(--yellow);color:var(--yellow)}
+.ft.type-ft.active[data-type="challenge"]{background:rgba(251,146,60,.25);border-color:var(--orange);color:var(--orange)}
+
+/* 타이머 */
+.timer-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.timer-display{font-family:'Black Han Sans',sans-serif;font-size:42px;color:var(--green);letter-spacing:2px;min-width:130px;text-align:center}
+.timer-display.stopped{color:var(--muted)}
+.timer-display.warning{color:var(--orange)}
+.timer-display.danger{color:var(--red);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.4}}
+
+/* 버튼 */
+.btn{padding:7px 14px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn:hover{border-color:var(--muted);background:var(--card2)}
+.btn-green{border-color:var(--green);color:var(--green)}
+.btn-green:hover{background:#22c55e22}
+.btn-green.active{background:var(--green);color:var(--bg)}
+.btn-orange{border-color:var(--orange);color:var(--orange)}
+.btn-orange:hover{background:#f9731622}
+.btn-red{border-color:var(--red);color:var(--red)}
+.btn-red:hover{background:#ef444422}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* 통계 */
+.stats{display:flex;gap:20px;align-items:center;flex-wrap:wrap;font-size:14px;font-weight:700}
+.stats strong{color:var(--green)}
+.stats .note{font-size:11px;color:var(--muted);font-weight:400}
+
+/* 결과 */
+.result-header{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.result-area{margin-bottom:12px}
+.result-label{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+.result-text{font-size:14px;line-height:1.8;word-break:break-all;color:var(--text);min-height:24px;padding:8px 10px;background:var(--card2);border-radius:6px;white-space:pre-wrap;max-height:300px;overflow-y:auto}
+.result-text:empty::after{content:'수집 대기 중...';color:var(--muted);font-size:12px}
+
+/* 로그 */
+.log-area{max-height:200px;overflow-y:auto;font-size:12px;font-family:monospace;line-height:1.8}
+.log-entry{color:var(--text2);padding:2px 0;border-bottom:1px solid #1e362522}
+.log-time{color:var(--muted);margin-right:8px}
+.log-nick{color:var(--green);font-weight:700}
+.log-amount{color:var(--yellow);margin:0 4px}
+.log-arrow{color:var(--muted);margin:0 4px}
+.log-result{color:var(--text)}
+
+/* 연결 상태 */
+.conn-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.conn-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-dot.off{background:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 헤더 -->
+  <div class="header">
+    <div class="logo"><img src="icon.png" alt="MK">MK
+      <a href="/" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px;margin-left:4px">미션매니저</a>
+      <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+      <a href="/team" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">팀뽑기</a>
+      <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+      <a href="/ladder" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">사다리</a>
+      <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+      <a href="/control" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">지통실</a>
+      <span style="-webkit-text-fill-color:var(--muted);font-size:16px;margin:0 2px">/</span>
+      <a href="/roster" style="text-decoration:none;-webkit-text-fill-color:inherit;border-bottom:2px solid var(--green);padding-bottom:1px">명단</a>
+    </div>
+    <div style="margin-left:auto;font-size:11px;display:flex;align-items:center;gap:4px">
+      <span class="conn-dot off" id="connDot"></span>
+      <span id="connText" style="color:var(--muted)">연결 안됨</span>
+    </div>
+  </div>
+
+  <!-- 설정 -->
+  <div class="sec">
+    <h2>설정</h2>
+    <div class="cfg">
+      <label>기준:</label>
+      <input type="number" id="threshold" value="200" min="1">
+      <span style="color:var(--muted);font-size:12px">개</span>
+      <label style="margin-left:8px">개당 *</label>
+      <input type="number" id="multiplier" value="1" min="1" max="10" style="width:50px">
+    </div>
+    <div class="filters">
+      <button class="ft type-ft active" data-type="all" onclick="toggleTypeFilter('all')">전체</button>
+      <button class="ft type-ft" data-type="balloon" onclick="toggleTypeFilter('balloon')">별풍선</button>
+      <button class="ft type-ft" data-type="adballoon" onclick="toggleTypeFilter('adballoon')">애드벌룬</button>
+      <button class="ft type-ft" data-type="mission" onclick="toggleTypeFilter('mission')">대결미션</button>
+      <button class="ft type-ft" data-type="challenge" onclick="toggleTypeFilter('challenge')">도전미션</button>
+      <span style="font-size:11px;color:var(--orange);font-weight:600">* 애드벌룬은 메시지가 정상 수신되지 않을 수 있습니다</span>
+    </div>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+      <button class="btn btn-green" onclick="applySettings()" id="applyBtn">설정완료</button>
+      <span id="applyMsg" style="font-size:11px;color:var(--green);font-weight:600;opacity:0;transition:opacity .3s"></span>
+    </div>
+  </div>
+
+  <!-- 타이머 -->
+  <div class="sec">
+    <div class="timer-row">
+      <span style="font-size:13px;font-weight:700;color:var(--text2)">타이머</span>
+      <div id="timerDisplay" class="timer-display stopped">05:00</div>
+      <button class="btn btn-green" id="toggleBtn" onclick="toggleCollection()">&#9654; 시작</button>
+      <button class="btn btn-sm" onclick="addTime(60)">+1</button>
+      <button class="btn btn-sm" onclick="addTime(180)">+3</button>
+      <button class="btn btn-sm" onclick="addTime(300)">+5</button>
+      <input type="number" id="timerSet" value="5" min="1" max="60" style="width:50px;padding:4px 6px;background:var(--card2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;text-align:center" title="분 단위 설정">
+      <span style="font-size:11px;color:var(--muted)">분</span>
+      <button class="btn btn-sm" onclick="setTimer()">설정</button>
+    </div>
+  </div>
+
+  <!-- 통계 -->
+  <div class="sec">
+    <div class="stats">
+      <span>참여인원 <strong id="statUsers">0</strong>명</span>
+      <span>핀볼개수 <strong id="statEntries">0</strong>개</span>
+      <span>총 후원개수 <strong id="statTotal">0</strong>개</span>
+      <span class="note" id="thresholdNote">(200개 단위 수집, 미만 제외)</span>
+    </div>
+  </div>
+
+  <!-- 수집 결과 -->
+  <div class="sec">
+    <div class="result-header">
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700">
+        <input type="checkbox" id="showNick" checked onchange="renderResults()" style="accent-color:var(--green);cursor:pointer"> 닉네임
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;font-weight:700">
+        <input type="checkbox" id="showMsg" checked onchange="renderResults()" style="accent-color:var(--green);cursor:pointer"> 메시지
+      </label>
+      <div style="margin-left:auto;display:flex;gap:6px">
+        <button class="btn btn-sm" onclick="copyNick()" id="copyNickBtn" style="border-color:rgba(74,222,128,.3);color:var(--blue)">닉네임 복사</button>
+        <button class="btn btn-sm" onclick="copyMsg()" id="copyMsgBtn" style="border-color:rgba(234,179,8,.3);color:var(--yellow)">메시지 복사</button>
+        <button class="btn btn-sm" onclick="openRoulette()" style="border-color:rgba(134,239,172,.3);color:var(--purple)" title="닉네임 복사 후 핀볼 사이트 열기">핀볼사이트</button>
+        <button class="btn btn-sm btn-red" onclick="resetAll()">초기화</button>
+      </div>
+    </div>
+
+    <div class="result-area" id="nickArea">
+      <div class="result-label">닉네임수집결과</div>
+      <div class="result-text" id="nickText"></div>
+    </div>
+
+    <div class="result-area" id="msgArea">
+      <div class="result-label">메시지수집결과</div>
+      <div class="result-text" id="msgText"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── 상태 (서버에서 관리, 클라이언트는 표시만) ───
+var entries = [];
+var isCollecting = false;
+var timerEndTime = null;
+var timerInterval = null;
+var typeFilters = ['all'];
+
+// ─── DOM 헬퍼 ───
+function $(id) { return document.getElementById(id); }
+function getThreshold() { return Math.max(1, parseInt($('threshold').value) || 200); }
+function getMultiplier() { return Math.max(1, parseInt($('multiplier').value) || 1); }
+
+// ─── 서버 API ───
+function api(action, data) {
+  var payload = data || {};
+  if (action) payload.action = action;
+  return fetch('/api/roster', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(function(r) { return r.json(); });
+}
+
+function loadFromServer() {
+  fetch('/api/roster').then(function(r) { return r.json(); }).then(function(d) {
+    if (!d.ok) return;
+    entries = d.entries || [];
+    isCollecting = d.active;
+    timerEndTime = d.endTime;
+    typeFilters = d.typeFilters || ['all'];
+    $('threshold').value = d.threshold || 200;
+    $('multiplier').value = d.multiplier || 1;
+    updateFilterButtons();
+    updateToggleBtn();
+    startTimerTick();
+    renderAll();
+  });
+}
+
+// ─── 타입 필터 (다중선택) ───
+function toggleTypeFilter(type) {
+  if (type === 'all') {
+    typeFilters = ['all'];
+  } else {
+    var idx = typeFilters.indexOf('all');
+    if (idx >= 0) typeFilters.splice(idx, 1);
+    var ti = typeFilters.indexOf(type);
+    if (ti >= 0) {
+      typeFilters.splice(ti, 1);
+      if (typeFilters.length === 0) typeFilters = ['all'];
+    } else {
+      typeFilters.push(type);
+      if (typeFilters.length >= 4) typeFilters = ['all'];
+    }
+  }
+  updateFilterButtons();
+}
+
+function updateFilterButtons() {
+  document.querySelectorAll('.type-ft').forEach(function(btn) {
+    var t = btn.getAttribute('data-type');
+    btn.classList.toggle('active', typeFilters.indexOf(t) >= 0);
+  });
+}
+
+// ─── 타이머 (서버 endTime 기반) ───
+function setTimer() {
+  var mins = parseInt($('timerSet').value) || 5;
+  updateTimerDisplay(mins * 60);
+}
+
+function startTimerTick() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(function() {
+    if (!isCollecting || !timerEndTime) {
+      updateTimerDisplay(isCollecting ? 0 : parseInt($('timerSet').value || 5) * 60);
+      return;
+    }
+    var remaining = Math.max(0, Math.ceil((timerEndTime - Date.now()) / 1000));
+    updateTimerDisplay(remaining);
+    if (remaining <= 0) {
+      isCollecting = false;
+      timerEndTime = null;
+      updateToggleBtn();
+    }
+  }, 250);
+}
+
+function addTime(sec) {
+  api('addTime', { seconds: sec }).then(function(d) {
+    if (d.endTime) timerEndTime = d.endTime;
+  });
+}
+
+function updateTimerDisplay(s) {
+  if (s === undefined) s = 0;
+  var mm = String(Math.floor(s / 60)).padStart(2, '0');
+  var ss = String(s % 60).padStart(2, '0');
+  var el = $('timerDisplay');
+  el.textContent = mm + ':' + ss;
+  el.className = 'timer-display';
+  if (!isCollecting) el.className += ' stopped';
+  else if (s <= 10) el.className += ' danger';
+  else if (s <= 60) el.className += ' warning';
+}
+
+// ─── 수집 시작/중지 → 서버에 요청 ───
+function toggleCollection() {
+  if (isCollecting) {
+    api('stop').then(function(d) {
+      isCollecting = false;
+      timerEndTime = null;
+      updateToggleBtn();
+    });
+  } else {
+    var secs = parseInt($('timerSet').value || 5) * 60;
+    api('start', { timerSeconds: secs }).then(function(d) {
+      isCollecting = d.active;
+      timerEndTime = d.endTime;
+      updateToggleBtn();
+    });
+  }
+}
+
+function updateToggleBtn() {
+  var btn = $('toggleBtn');
+  if (isCollecting) {
+    btn.innerHTML = '&#9724; 중지';
+    btn.className = 'btn btn-red';
+  } else {
+    btn.innerHTML = '&#9654; 시작';
+    btn.className = 'btn btn-green';
+  }
+}
+
+// ─── 설정완료 → 서버에 전송 ───
+function applySettings() {
+  api(null, { threshold: getThreshold(), multiplier: getMultiplier(), typeFilters: typeFilters }).then(function() {
+    $('thresholdNote').textContent = '(' + getThreshold() + '개 단위 수집, 미만 제외)';
+    var msg = $('applyMsg');
+    msg.textContent = '설정 저장됨!';
+    msg.style.opacity = '1';
+    setTimeout(function() { msg.style.opacity = '0'; }, 1500);
+  });
+}
+
+// ─── SSE (실시간 업데이트, 서버가 수집한 결과 수신) ───
+function connectSSE() {
+  var es = new EventSource('/api/events');
+  es.addEventListener('status', function(e) {
+    var d = JSON.parse(e.data);
+    var dot = $('connDot'), txt = $('connText');
+    if (d.status === 'connected') {
+      dot.className = 'conn-dot on'; txt.textContent = d.streamerId + ' 연결됨'; txt.style.color = 'var(--green)';
+    } else if (d.status === 'connecting') {
+      dot.className = 'conn-dot off'; txt.textContent = '연결 중...'; txt.style.color = 'var(--orange)';
+    } else {
+      dot.className = 'conn-dot off'; txt.textContent = d.error || '연결 안됨'; txt.style.color = 'var(--muted)';
+    }
+  });
+
+  // 서버가 수집한 새 엔트리
+  es.addEventListener('rosterEntry', function(e) {
+    var entry = JSON.parse(e.data);
+    // 중복 방지 (이미 있으면 무시)
+    for (var i = 0; i < entries.length; i++) { if (entries[i].id === entry.id) return; }
+    entries.push(entry);
+    renderAll();
+  });
+
+  // 서버가 매칭한 메시지 업데이트
+  es.addEventListener('rosterMsgUpdate', function(e) {
+    var d = JSON.parse(e.data);
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].id === d.id) { entries[i].message = d.message; renderAll(); return; }
+    }
+  });
+
+  es.onerror = function() {
+    $('connDot').className = 'conn-dot off';
+    $('connText').textContent = 'SSE 연결 끊김'; $('connText').style.color = 'var(--red)';
+  };
+}
+
+// ─── 결과 렌더링 ───
+function renderAll() { renderStats(); renderResults(); }
+
+function renderStats() {
+  var totalEntries = 0, userSet = {}, totalAmount = 0;
+  for (var i = 0; i < entries.length; i++) {
+    totalEntries += entries[i].entryCount;
+    userSet[entries[i].userId] = true;
+    totalAmount += entries[i].units * getThreshold();
+  }
+  $('statEntries').textContent = totalEntries.toLocaleString();
+  $('statUsers').textContent = Object.keys(userSet).length;
+  $('statTotal').textContent = totalAmount.toLocaleString();
+  $('thresholdNote').textContent = '(' + getThreshold() + '개 단위 수집, 미만 제외)';
+}
+
+function renderResults() {
+  var showNick = $('showNick').checked, showMsg = $('showMsg').checked;
+  $('nickArea').style.display = showNick ? '' : 'none';
+  $('msgArea').style.display = showMsg ? '' : 'none';
+  if (showNick) $('nickText').textContent = getNicknameResults();
+  if (showMsg) $('msgText').textContent = getMessageResults();
+}
+
+function getNicknameResults() {
+  var map = {};
+  for (var i = 0; i < entries.length; i++) { var e = entries[i]; map[e.userNickname] = (map[e.userNickname] || 0) + e.entryCount; }
+  var parts = [];
+  for (var k in map) parts.push(k + '*' + map[k]);
+  return parts.join(',');
+}
+
+function getMessageResults() {
+  var map = {};
+  for (var i = 0; i < entries.length; i++) { var e = entries[i]; if (!e.message) continue; map[e.message] = (map[e.message] || 0) + e.entryCount; }
+  var parts = [];
+  for (var k in map) parts.push(k + '*' + map[k]);
+  return parts.join(',');
+}
+
+// ─── 복사 ───
+function clipCopy(text, btn, originalText) {
+  if (!text) { alert('복사할 데이터가 없습니다'); return; }
+  navigator.clipboard.writeText(text).then(function() {
+    btn.textContent = '복사됨!'; btn.style.color = 'var(--green)';
+    setTimeout(function() { btn.textContent = originalText; btn.style.color = ''; }, 1500);
+  });
+}
+function copyNick() { clipCopy(getNicknameResults(), $('copyNickBtn'), '닉네임 복사'); }
+function copyMsg() { clipCopy(getMessageResults(), $('copyMsgBtn'), '메시지 복사'); }
+
+// ─── 핀볼사이트 이동 ───
+function openRoulette() { window.open('https://lazygyu.github.io/roulette/', '_blank'); }
+
+// ─── 초기화 → 서버에 요청 ───
+function resetAll() {
+  if (entries.length > 0 && !confirm('전체 초기화하시겠습니까?')) return;
+  api('reset').then(function() {
+    entries = [];
+    isCollecting = false;
+    timerEndTime = null;
+    typeFilters = ['all'];
+    updateFilterButtons();
+    updateToggleBtn();
+    renderAll();
+  });
+}
+
+// ─── 시작: 서버에서 상태 로드 + SSE 연결 ───
+loadFromServer();
+connectSSE();
+startTimerTick();
+</script>
+</body>
+</html>

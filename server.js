@@ -130,6 +130,61 @@ let sseClients = [];
 let unknownPackets = [];
 let recentDonors = {};  // userId → { timestamp, resultId, nick, amount } (0018 후 0005 연결용)
 
+// ─── 명단(Roster) 서버 수집 ───
+let rosterState = {
+  active: false,
+  threshold: 200,
+  multiplier: 1,
+  typeFilters: ['all'],
+  endTime: null,
+  entries: [],       // { id, userId, userNickname, amount, type, units, entryCount, message, time }
+  pendingMessages: {}
+};
+
+function rosterCollect(uid, nick, amount, type, time) {
+  if (!rosterState.active) return;
+  if (rosterState.endTime && Date.now() > rosterState.endTime) { rosterState.active = false; return; }
+  // 타입 필터
+  var tf = rosterState.typeFilters;
+  if (tf.indexOf('all') < 0 && tf.indexOf(type) < 0) return;
+  if (type === 'video') return;
+  var units = Math.floor(amount / rosterState.threshold);
+  if (units < 1) return;
+  var entryCount = units * rosterState.multiplier;
+  // 대기 메시지 확인
+  var pKey = uid + '_' + amount;
+  var msg = rosterState.pendingMessages[pKey] || null;
+  if (msg) delete rosterState.pendingMessages[pKey];
+  var entry = { id: Date.now() + Math.random(), userId: uid, userNickname: nick, amount, type, units, entryCount, message: msg, time: time || now() };
+  rosterState.entries.push(entry);
+  broadcast('rosterEntry', entry);
+}
+
+function rosterMatchMsg(uid, amount, message) {
+  if (!rosterState.active) return;
+  // amount 매칭
+  for (var i = rosterState.entries.length - 1; i >= 0; i--) {
+    var en = rosterState.entries[i];
+    if (en.userId === uid && en.amount === amount && !en.message) {
+      en.message = message;
+      broadcast('rosterMsgUpdate', { id: en.id, message });
+      return;
+    }
+  }
+  // userId만으로 재시도
+  for (var i = rosterState.entries.length - 1; i >= 0; i--) {
+    var en = rosterState.entries[i];
+    if (en.userId === uid && !en.message) {
+      en.message = message;
+      broadcast('rosterMsgUpdate', { id: en.id, message });
+      return;
+    }
+  }
+  var key = uid + '_' + amount;
+  rosterState.pendingMessages[key] = message;
+  setTimeout(() => { delete rosterState.pendingMessages[key]; }, 30000);
+}
+
 // 중복 패킷 방지 (SOOP은 같은 패킷을 3번 보냄)
 const seenPackets = new Set();
 function isDuplicate(key) {
@@ -242,6 +297,7 @@ function parse0121(rawStr) {
         // 이 유저의 다음 채팅을 메시지로 연결
         recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
         setTimeout(() => { delete recentDonors[uid]; }, 60000);
+        rosterCollect(uid, nick, amt, eventType, now());
 
         const entry = {
           time: now(),
@@ -297,20 +353,11 @@ async function connectToSoop() {
       broadcast('balloon', { userId: uid, userNickname: nick, amount: amt, channelUrl: `https://ch.sooplive.co.kr/${uid}`, time: now(), type: 'balloon' });
       const result = matchBalloon(uid, nick, amt, 'balloon');
 
-      let foundMsg = null;
-      if (global._recentChats) {
-        const recent = global._recentChats.find(c => normalizeUid(c.userId) === uid && (Date.now() - c.ts) < 60000);
-        if (recent) {
-          foundMsg = recent.comment;
-          console.log(`💬 직전 채팅에서 TTS 연결! ${nick}(${uid}): "${foundMsg}"`);
-          if (result) { result.message = foundMsg; broadcast('resultUpdate', result); }
-          broadcast('donationMsg', { userId: uid, userNickname: nick, amount: amt, message: foundMsg, time: now() });
-        }
-      }
-      if (!foundMsg) {
-        recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
-        setTimeout(() => { delete recentDonors[uid]; }, 60000);
-      }
+      // TTS 메시지는 별풍선 이후 CHAT으로 도착 → deferred 매칭 사용
+      // (_recentChats 매칭 제거: 일반 채팅이 TTS로 잘못 매칭되는 버그 수정)
+      recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
+      setTimeout(() => { delete recentDonors[uid]; }, 60000);
+      rosterCollect(uid, nick, amt, 'balloon', now());
     });
 
     // 🎈 애드벌룬
@@ -323,6 +370,7 @@ async function connectToSoop() {
       const result = matchBalloon(uid, nick, amt, 'adballoon');
       recentDonors[uid] = { timestamp: Date.now(), resultId: result?.id || null, nick, amount: amt };
       setTimeout(() => { delete recentDonors[uid]; }, 60000);
+      rosterCollect(uid, nick, amt, 'adballoon', now());
     });
 
     // 🎬 영상풍선
@@ -370,6 +418,7 @@ async function connectToSoop() {
           if (r) { r.message = msg; broadcast('resultUpdate', r); }
         }
         broadcast('donationMsg', { userId: uid, userNickname: donor.nick, amount: donor.amount, message: msg, time: now() });
+        rosterMatchMsg(uid, donor.amount, msg);
         delete recentDonors[uid];
       }
     });
@@ -419,9 +468,16 @@ async function connectToSoop() {
               global._recentChats.unshift({ ts: Date.now(), userId: chatUserId, comment: chatComment });
               if (global._recentChats.length > 50) global._recentChats.pop();
             }
-            if (chatUserId && recentDonors[chatUserId]) {
-              const debugLog = `[${new Date().toISOString()}] RAW_CHAT_AFTER_DONATION userId=${chatUserId} msg="${chatComment}"\n${'='.repeat(60)}\n`;
-              fs.appendFile(path.join(__dirname, 'donation_debug.log'), debugLog, () => {});
+            if (chatUserId && chatComment && recentDonors[chatUserId]) {
+              const donor = recentDonors[chatUserId];
+              console.log(`✅ RAW TTS 메시지 연결! ${donor.nick}(${chatUserId}): "${chatComment}"`);
+              if (donor.resultId) {
+                const r = missionResults.find(r => r.id === donor.resultId);
+                if (r && !r.message) { r.message = chatComment; broadcast('resultUpdate', r); }
+              }
+              broadcast('donationMsg', { userId: chatUserId, userNickname: donor.nick, amount: donor.amount, message: chatComment, time: now() });
+              rosterMatchMsg(chatUserId, donor.amount, chatComment);
+              delete recentDonors[chatUserId];
             }
           }
 
@@ -599,15 +655,20 @@ const server = http.createServer((req, res) => {
       const { userId, userNickname, amount, eventType, message } = d;
       if (!userId || !amount) return json({ ok: false, error: 'userId, amount 필수' }, 400);
       broadcast('balloon', { userId, userNickname, amount, type: eventType || 'balloon', time: now() });
+      if (message) {
+        broadcast('donationMsg', { userId, userNickname, amount: parseInt(amount), message, time: now() });
+      }
       const result = matchBalloon(userId, userNickname, parseInt(amount), eventType || 'balloon');
       if (result && message) {
         result.message = message;
         broadcast('resultUpdate', result);
-      } else if (result && !message) {
-        // 분리전송: 메시지 없이 별풍선만 → recentDonors에 등록 (나중에 채팅으로 연결)
-        recentDonors[userId] = { timestamp: Date.now(), resultId: result.id, nick: userNickname, amount: parseInt(amount) };
+      }
+      if (!message) {
+        recentDonors[userId] = { timestamp: Date.now(), resultId: result?.id || null, nick: userNickname, amount: parseInt(amount) };
         setTimeout(() => { delete recentDonors[userId]; }, 60000);
       }
+      rosterCollect(userId, userNickname, parseInt(amount), eventType || 'balloon', now());
+      if (message) rosterMatchMsg(userId, parseInt(amount), message);
       json({ ok: true, matched: !!result, id: result?.id, hasMessage: !!message });
     }); return;
   }
@@ -624,6 +685,7 @@ const server = http.createServer((req, res) => {
           if (r) { r.message = message; broadcast('resultUpdate', r); }
         }
         broadcast('donationMsg', { userId, userNickname: donor.nick, amount: donor.amount, message, time: now() });
+        rosterMatchMsg(userId, donor.amount, message);
         delete recentDonors[userId];
         json({ ok: true, linked: true });
       } else {
@@ -692,6 +754,36 @@ const server = http.createServer((req, res) => {
     missionResults=[]; broadcast('resetResults',{}); return json({ok:true});
   }
 
+  // 역팬 선물 대기열 API - 미션명으로 필터링하여 userId 목록 반환
+  if (url.pathname === '/api/gift-queue' && req.method === 'GET') {
+    const mission = url.searchParams.get('mission') || '역팬';
+    const status = url.searchParams.get('status') || 'pending'; // pending, completed, all
+    let list = missionResults.filter(r => r.templateName === mission);
+    if (status === 'pending') list = list.filter(r => !r.completed);
+    else if (status === 'completed') list = list.filter(r => r.completed);
+    return json({
+      mission,
+      count: list.length,
+      list: list.map(r => ({
+        id: r.id, userId: r.userId, userNickname: r.userNickname,
+        amount: r.amount, message: r.message, completed: r.completed, createdAt: r.createdAt
+      }))
+    });
+  }
+
+  // 역팬 선물 완료 처리 - 선물 보낸 후 완료 표시
+  if (url.pathname === '/api/gift-done' && req.method === 'POST') {
+    body().then(d => {
+      const ids = d.ids || (d.id ? [d.id] : []);
+      let cnt = 0;
+      ids.forEach(id => {
+        const r = missionResults.find(r => r.id == id);
+        if (r && !r.completed) { r.completed = true; broadcast('resultUpdate', r); cnt++; }
+      });
+      saveData();
+      json({ ok: true, completed: cnt });
+    }); return;
+  }
 
   // 설정
   if (url.pathname === '/api/config' && req.method === 'GET') return json({streamerId:CONFIG.STREAMER_ID, autoThreshold});
@@ -976,6 +1068,65 @@ const server = http.createServer((req, res) => {
     fs.readFile(path.join(__dirname, 'control.html'), (e, d) => {
       if(e){res.writeHead(500);res.end('err');return;}
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // 명단
+  if (url.pathname === '/roster') {
+    fs.readFile(path.join(__dirname, 'roster.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // 명단 API - 상태 조회
+  if (url.pathname === '/api/roster' && req.method === 'GET') {
+    return json({ ok: true, active: rosterState.active, threshold: rosterState.threshold, multiplier: rosterState.multiplier, typeFilters: rosterState.typeFilters, endTime: rosterState.endTime, entries: rosterState.entries });
+  }
+
+  // 명단 API - 설정/시작/중지
+  if (url.pathname === '/api/roster' && req.method === 'POST') {
+    body().then(d => {
+      if (d.threshold !== undefined) rosterState.threshold = Math.max(1, parseInt(d.threshold) || 200);
+      if (d.multiplier !== undefined) rosterState.multiplier = Math.max(1, parseInt(d.multiplier) || 1);
+      if (d.typeFilters) rosterState.typeFilters = d.typeFilters;
+      if (d.action === 'start') {
+        rosterState.active = true;
+        var secs = parseInt(d.timerSeconds) || 300;
+        rosterState.endTime = Date.now() + secs * 1000;
+      } else if (d.action === 'stop') {
+        rosterState.active = false;
+        rosterState.endTime = null;
+      } else if (d.action === 'addTime') {
+        var add = parseInt(d.seconds) || 60;
+        if (rosterState.endTime) rosterState.endTime += add * 1000;
+      } else if (d.action === 'reset') {
+        rosterState.active = false;
+        rosterState.endTime = null;
+        rosterState.entries = [];
+        rosterState.pendingMessages = {};
+      }
+      json({ ok: true, active: rosterState.active, endTime: rosterState.endTime, entryCount: rosterState.entries.length });
+    }); return;
+  }
+
+  // 데이터 백업 (다운로드)
+  if (url.pathname === '/api/data-backup' && req.method === 'GET') {
+    const data = { missionTemplates, missionResults, autoThreshold };
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="data-backup.json"' });
+    res.end(JSON.stringify(data, null, 2));
+    return;
+  }
+
+  // 데이터 복원 (업로드)
+  if (url.pathname === '/api/data-restore' && req.method === 'POST') {
+    body().then(d => {
+      if (d.missionTemplates) missionTemplates = d.missionTemplates;
+      if (d.missionResults) missionResults = d.missionResults;
+      if (d.autoThreshold !== undefined) autoThreshold = d.autoThreshold;
+      saveData();
+      console.log(`💾 데이터 복원 완료: 템플릿 ${missionTemplates.length}개, 결과 ${missionResults.length}개`);
+      json({ ok: true, templates: missionTemplates.length, results: missionResults.length });
     }); return;
   }
 

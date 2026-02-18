@@ -305,6 +305,8 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
       <a href="/ladder" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">사다리</a>
       <span style="-webkit-text-fill-color:var(--muted);font-size:16px">/</span>
       <a href="/control" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">지통실</a>
+      <span style="-webkit-text-fill-color:var(--muted);font-size:16px">/</span>
+      <a href="/roster" style="text-decoration:none;-webkit-text-fill-color:var(--muted);font-size:16px">명단</a>
     </div>
   </div>
 
@@ -329,8 +331,12 @@ body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(7
 
     <!-- 오늘의 대결 멤버 -->
     <div id="memberSection" class="ladder-container" style="margin-bottom:16px;display:none">
-      <h2 id="memberSectionTitle" style="font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+      <h2 id="memberSectionTitle" style="font-size:16px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         👥 오늘의 대결 멤버
+        <span id="mapToggle" style="display:none;margin-left:4px;align-items:center;gap:4px">
+          <button id="btnRift" onclick="setMapMode('rift')" style="padding:3px 10px;border-radius:6px;border:2px solid var(--green);background:rgba(74,222,128,.2);color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">협곡</button>
+          <button id="btnAram" onclick="setMapMode('aram')" style="padding:3px 10px;border-radius:6px;border:2px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">칼바람</button>
+        </span>
         <span style="font-size:10px;color:var(--muted);font-weight:400">미리 등록해두고 클릭으로 선택하세요</span>
         <span id="memberToggleHint" style="display:none;font-size:10px;color:var(--green);margin-left:auto">▼ 펼치기</span>
       </h2>
@@ -665,10 +671,27 @@ let firstPickUsed = false; // 1번만일 때 사용됐는지
 let teamSide = { A: 'blue', B: 'red' }; // 기본값
 let isSideLadder = false; // 진영 결정 사다리 모드
 
+// 맵 모드: 'rift' (협곡) | 'aram' (칼바람)
+let mapMode = 'rift';
+
 // 드래프트 방식: 'normal' | 'random' | 'custom'
 let draftMethod = 'normal';
 let customPicker = null; // 커스텀 시 선택한 사람
 let customPickTeam = 'A'; // 커스텀 시 현재 넣을 팀
+
+// 묶밸 (그룹 맞벨) - 체크된 라인끼리 하나의 그룹
+let bundleChecked = [false, false, false, false, false];
+
+function toggleBundleCheck(posIdx){
+  if(membersConfirmed) return;
+  bundleChecked[posIdx] = !bundleChecked[posIdx];
+  updateTodayMembersList();
+}
+
+// line index → 그룹 키 (묶밸 체크된 라인은 'bundle', 아니면 고유 키)
+function getLineGroupKey(lineIdx){
+  return bundleChecked[lineIdx] ? 'bundle' : ('solo_' + lineIdx);
+}
 
 // 포지션
 let usedRolesA = [];
@@ -685,6 +708,8 @@ const ROLES = [
 function getRoleFromSlot(memberId){
   // 솔랭은 포지션 없음
   if(gameMode === 'solo') return { key: 'pick', name: 'PICK', icon: '🎮' };
+  // 칼바람은 포지션 없음
+  if(mapMode === 'aram') return { key: 'pick', name: 'PICK', icon: '🎮' };
   const slots = landSlots;
   for(let i = 0; i < slots.length; i++){
     if(slots[i] && slots[i].id === memberId){
@@ -741,11 +766,26 @@ function switchTab(tab, btn){
   document.getElementById(tab + 'Tab').classList.add('active');
 }
 
+// ========== 맵 모드 (협곡/칼바람) ==========
+function setMapMode(mode){
+  mapMode = mode;
+  var btnR = document.getElementById('btnRift'), btnA = document.getElementById('btnAram');
+  if(mode === 'rift'){
+    btnR.style.borderColor = 'var(--green)'; btnR.style.background = 'rgba(74,222,128,.2)'; btnR.style.color = 'var(--green)';
+    btnA.style.borderColor = 'var(--border)'; btnA.style.background = 'transparent'; btnA.style.color = 'var(--muted)';
+  } else {
+    btnA.style.borderColor = 'var(--blue)'; btnA.style.background = 'rgba(96,165,250,.2)'; btnA.style.color = 'var(--blue)';
+    btnR.style.borderColor = 'var(--border)'; btnR.style.background = 'transparent'; btnR.style.color = 'var(--muted)';
+  }
+  updateTodayMembersList();
+}
+
 // ========== 게임 모드 선택 ==========
 function selectGameMode(mode){
   gameMode = mode;
   document.getElementById('gameModeSelector').style.display = 'none';
   document.getElementById('memberSection').style.display = '';
+  document.getElementById('mapToggle').style.display = mode === 'land' ? 'inline-flex' : 'none';
 
   if(mode === 'solo'){
     // 솔랭모드: 동적 슬롯 (멤버 수에 맞게)
@@ -2575,7 +2615,7 @@ function updateTodayMembersList() {
 
       const label = document.createElement('div');
       label.className = 'pair-label';
-      label.textContent = role.name;
+      label.textContent = mapMode === 'aram' ? (posIdx + 1) : role.name;
       row.appendChild(label);
 
       row.appendChild(createLandSlot(posIdx * 2));
@@ -2586,6 +2626,19 @@ function updateTodayMembersList() {
       row.appendChild(vs);
 
       row.appendChild(createLandSlot(posIdx * 2 + 1));
+
+      // 묶밸 체크박스
+      if(!membersConfirmed){
+        const chk = document.createElement('label');
+        chk.style.cssText = 'display:flex;align-items:center;gap:3px;margin-left:6px;cursor:pointer;font-size:10px;color:' + (bundleChecked[posIdx] ? 'var(--yellow)' : 'var(--muted)') + ';font-weight:600;white-space:nowrap';
+        chk.innerHTML = '<input type="checkbox" ' + (bundleChecked[posIdx] ? 'checked' : '') + ' style="accent-color:var(--yellow);cursor:pointer" onchange="event.stopPropagation();toggleBundleCheck(' + posIdx + ')">묶밸';
+        row.appendChild(chk);
+      } else if(bundleChecked[posIdx]){
+        const tag = document.createElement('span');
+        tag.textContent = '🔗';
+        tag.style.cssText = 'font-size:11px;margin-left:4px';
+        row.appendChild(tag);
+      }
 
       container.appendChild(row);
     }
@@ -3054,11 +3107,11 @@ function activateSlotInput(slot, slotIdx, slotMode){
 // ========== 멤버확정 ==========
 function confirmMembers(){
   if(gameMode === 'land'){
-    // 랜드: 완성된 페어만 사용
+    // 랜드: 완성된 페어만 사용 (원래 posIdx 기억)
     let pairs = [];
     for(let i = 0; i < 10; i += 2){
       if(landSlots[i] && landSlots[i+1]){
-        pairs.push({ a: landSlots[i], b: landSlots[i+1] });
+        pairs.push({ a: landSlots[i], b: landSlots[i+1], posIdx: i / 2 });
       }
     }
     if(pairs.length < 2){
@@ -3071,6 +3124,9 @@ function confirmMembers(){
     pairs.forEach(p => { todayMembers.push(p.a); todayMembers.push(p.b); });
     saveTodayMembers();
     availableLines = pairs.map((p, i) => ({ idx: i, a: p.a, b: p.b, drafted: false }));
+    // 묶밸 정보를 확정된 라인 기준으로 재매핑
+    var newBundle = pairs.map(p => bundleChecked[p.posIdx] || false);
+    bundleChecked = newBundle;
   } else {
     // 솔랭: soloSlots에서 완성된 페어만 사용 (동적)
     let pairs = [];
@@ -3222,7 +3278,7 @@ function openFirstPickModal(){
   const options = document.getElementById('lineSelectOptions');
   const fpArea = document.getElementById('lineFirstPickArea');
   const confirmBtn = document.getElementById('lineConfirmBtn');
-  const ROLES = gameMode === 'solo' ? availableLines.map((_,i) => (i+1) + '번') : ['탑','정글','미드','원딜','서폿'];
+  const ROLES = gameMode === 'solo' ? availableLines.map((_,i) => (i+1) + '번') : (mapMode === 'aram' ? availableLines.map((_,i) => (i+1) + '번') : ['탑','정글','미드','원딜','서폿']);
 
   // 라인(포지션) 선택 목록
   options.innerHTML = '';
@@ -3505,6 +3561,9 @@ function openDraftMethodModal(){
     return;
   }
   document.getElementById('draftMethodOverlay').classList.add('active');
+  // 칼바람이면 포지션 옵션 숨기기
+  var posLabel = document.getElementById('randPosition')?.parentElement;
+  if(posLabel) posLabel.style.display = mapMode === 'aram' ? 'none' : '';
 }
 function closeDraftMethodModal(){
   document.getElementById('draftMethodOverlay').classList.remove('active');
@@ -3555,39 +3614,84 @@ async function startRandomTeamDraft(){
   void diceContainer.offsetWidth;
   diceContainer.style.animation = '';
 
-  // 포지션 목록 (5인 기준)
-  const roles = ['탑', '정글', '미드', '원딜', '서폿'];
+  // 포지션 목록 (5인 기준, 칼바람은 번호)
+  const roles = mapMode === 'aram' ? ['1번','2번','3번','4번','5번'] : ['탑', '정글', '미드', '원딜', '서폿'];
   const shuffleStreamer = document.getElementById('randStreamer')?.checked !== false;
   const shufflePosition = document.getElementById('randPosition')?.checked === true;
 
-  // 라인(쌍) 단위로 구성
-  const lines = [];
+  // 라인(쌍) 단위로 구성 + 원래 posIdx 기억
+  let lines = [];
   for(let i = 0; i < todayMembers.length; i += 2){
-    lines.push({ a: todayMembers[i], b: todayMembers[i + 1] });
+    lines.push({ a: todayMembers[i], b: todayMembers[i + 1], origIdx: i / 2 });
   }
 
-  // 포지션 셔플: 라인 순서를 랜덤으로 섞음
+  // 포지션 셔플: 묶밸 그룹은 블록 단위로 셔플
   if(shufflePosition){
-    for(let i = lines.length - 1; i > 0; i--){
-      const j = Math.floor(Math.random() * (i + 1));
-      [lines[i], lines[j]] = [lines[j], lines[i]];
+    // 묶밸 그룹별로 블록 생성
+    const used = new Set();
+    const blocks = [];
+    for(let i = 0; i < lines.length; i++){
+      if(used.has(i)) continue;
+      const gk = getLineGroupKey(i);
+      if(gk.startsWith('solo_')){
+        blocks.push([lines[i]]);
+        used.add(i);
+      } else {
+        // 같은 그룹의 모든 라인을 하나의 블록으로
+        const block = [];
+        for(let j = 0; j < lines.length; j++){
+          if(getLineGroupKey(j) === gk){ block.push(lines[j]); used.add(j); }
+        }
+        blocks.push(block);
+      }
     }
+    // 블록 셔플 (Fisher-Yates)
+    for(let i = blocks.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [blocks[i], blocks[j]] = [blocks[j], blocks[i]];
+    }
+    lines = blocks.flat();
   }
 
   teamA = [];
   teamB = [];
 
-  diceResultText.textContent = (shuffleStreamer && shufflePosition) ? '팀 & 포지션 배정 중...' : shufflePosition ? '포지션 배정 중...' : '팀 배정 중...';
-  diceResultText.style.animation = 'none';
-  void diceResultText.offsetWidth;
-  diceResultText.style.animation = 'fadeInUp .5s forwards';
-
+  if(shufflePosition && shuffleStreamer){
+    diceResultText.textContent = '포지션 섞는 중...';
+    diceResultText.style.animation = 'none'; void diceResultText.offsetWidth;
+    diceResultText.style.animation = 'fadeInUp .5s forwards';
+    await sleep(1200);
+    diceResultText.textContent = '스트리머 섞는 중...';
+    diceResultText.style.animation = 'none'; void diceResultText.offsetWidth;
+    diceResultText.style.animation = 'fadeInUp .5s forwards';
+  } else if(shufflePosition){
+    diceResultText.textContent = '포지션 섞는 중...';
+    diceResultText.style.animation = 'none'; void diceResultText.offsetWidth;
+    diceResultText.style.animation = 'fadeInUp .5s forwards';
+  } else if(shuffleStreamer){
+    diceResultText.textContent = '스트리머 섞는 중...';
+    diceResultText.style.animation = 'none'; void diceResultText.offsetWidth;
+    diceResultText.style.animation = 'fadeInUp .5s forwards';
+  } else {
+    diceResultText.textContent = '배정 중...';
+    diceResultText.style.animation = 'none'; void diceResultText.offsetWidth;
+    diceResultText.style.animation = 'fadeInUp .5s forwards';
+  }
   await sleep(800);
+
+  // 묶밸 그룹별 A/B 결정 (같은 그룹은 같은 방향)
+  const groupFlip = {};
+  for(let i = 0; i < lines.length; i++){
+    const gk = getLineGroupKey(lines[i].origIdx);
+    if(!(gk in groupFlip)){
+      groupFlip[gk] = shuffleStreamer ? Math.random() < 0.5 : true;
+    }
+  }
 
   for(let i = 0; i < lines.length; i++){
     const line = lines[i];
     const role = i < roles.length ? roles[i] : 'PICK';
-    const aGoesA = shuffleStreamer ? Math.random() < 0.5 : true; // 스트리머 랜덤이면 A/B 섞기, 아니면 고정
+    const aGoesA = groupFlip[getLineGroupKey(line.origIdx)];
 
     const m1 = aGoesA ? line.a : line.b; // A팀 멤버
     const m2 = aGoesA ? line.b : line.a; // B팀 멤버
@@ -3620,7 +3724,7 @@ async function startRandomTeamDraft(){
     card.classList.add('show');
   }
 
-  diceResultText.textContent = (shuffleStreamer && shufflePosition) ? '팀 & 포지션 배정 완료!' : shufflePosition ? '포지션 배정 완료!' : '팀 배정 완료!';
+  diceResultText.textContent = (shufflePosition && shuffleStreamer) ? '포지션 & 스트리머 배정 완료!' : shufflePosition ? '포지션 배정 완료!' : shuffleStreamer ? '스트리머 배정 완료!' : '배정 완료!';
   diceResultText.style.animation = 'none';
   void diceResultText.offsetWidth;
   diceResultText.style.animation = 'fadeInUp .5s forwards';
