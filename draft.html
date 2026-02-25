@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SOOP 멸망전 구인구직FA</title>
+<link rel="icon" href="icon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f5f5;--card:#fff;--card2:#f0f0f0;--accent:#2563eb;--orange:#ea580c;--green:#16a34a;--red:#dc2626;--yellow:#ca8a04;--text:#1a1a1a;--text2:#6b7280;--muted:#9ca3af;--border:#e5e7eb;--shadow:0 1px 3px rgba(0,0,0,.08)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* 레이아웃 */
+.layout{display:flex;gap:16px;max-width:1600px;margin:0 auto;padding:16px}
+.sidebar{width:440px;flex-shrink:0}
+.main{flex:1;min-width:0}
+@media(max-width:1100px){.layout{flex-direction:column}.sidebar{width:100%}}
+
+/* 헤더 */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
+.header-left{display:flex;align-items:center;gap:10px}
+.header .title{font-weight:900;font-size:26px;color:var(--text)}
+.header .badge{font-size:11px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:10px}
+.header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.status-text{font-size:11px;color:var(--muted)}
+.poll-timer{font-size:12px;font-weight:700;color:var(--accent);background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;user-select:none;min-width:42px;text-align:center;transition:all .15s}
+.poll-timer:hover{background:var(--accent);color:#fff}
+.loading-spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 버튼 */
+.btn{padding:7px 14px;border-radius:6px;border:1px solid var(--border);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;background:var(--card);color:var(--text)}
+.btn:hover{background:var(--card2)}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-accent:hover{background:#1d4ed8}
+.btn-red{background:#fff;color:var(--red);border-color:var(--red)}
+.btn-red:hover{background:#fef2f2}
+.btn-green{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-green:hover{background:#15803d}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* 사이드바 - 시간대별 명단 */
+.sidebar-title{font-weight:900;font-size:16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+.time-block{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;box-shadow:var(--shadow);overflow:hidden}
+.time-header{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card2);border-bottom:1px solid var(--border)}
+.time-header .time-label{font-weight:900;font-size:20px;color:var(--accent)}
+.time-header .time-status{font-size:12px;color:var(--muted);margin-left:auto;font-weight:700}
+.time-header .enemy-toggle{font-size:11px;color:var(--accent);cursor:pointer;border:1px solid var(--accent);background:none;border-radius:4px;padding:3px 10px;font-family:inherit;font-weight:600;white-space:nowrap}
+.time-header .enemy-toggle:hover{background:var(--accent);color:#fff}
+.time-header .enemy-toggle.active{background:var(--accent);color:#fff}
+.time-body{padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+.match-side{flex:1;min-width:0}
+.match-side-label{font-weight:700;font-size:15px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.match-side-label .del-btn{font-size:10px;color:var(--red);cursor:pointer;border:none;background:none;font-family:inherit}
+.side-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px}
+.side-row img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+.side-row .sr-pos{color:var(--accent);font-weight:700;width:30px;font-size:13px}
+.side-row .sr-name{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-row .sr-score{font-weight:900;color:var(--orange);font-size:19px}
+.side-total{font-weight:900;font-size:18px;text-align:right;padding-top:8px;border-top:2px solid var(--border);margin-top:6px}
+.side-total .pen{color:var(--red);font-size:13px;font-weight:700}
+.vs-divider{display:flex;align-items:center;font-weight:900;font-size:16px;color:var(--red);padding:0 6px;flex-shrink:0}
+.empty-side{font-size:13px;color:var(--muted);padding:10px 0;text-align:center}
+.sr-links{display:flex;gap:3px;flex-shrink:0;margin-left:2px}
+.sr-links a{font-size:9px;padding:1px 4px;border-radius:3px;text-decoration:none;font-weight:700;white-space:nowrap}
+.sr-link-live{background:#dc2626;color:#fff}
+.sr-link-off{background:var(--card2);color:var(--muted);border:1px solid var(--border);pointer-events:none;opacity:.5}
+.sr-link-lol{background:#1d4ed8;color:#fff}
+.sr-del{font-size:10px;color:var(--muted);cursor:pointer;margin-left:2px;padding:0 3px;border-radius:3px}
+.sr-del:hover{color:var(--red);background:rgba(220,38,38,.1)}
+.add-slot-btn{width:100%;padding:10px;border:2px dashed var(--border);border-radius:10px;background:none;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:var(--muted);transition:all .15s}
+.add-slot-btn:hover{border-color:var(--accent);color:var(--accent)}
+.time-header .del-slot{font-size:10px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:inherit;padding:2px 4px}
+.time-header .del-slot:hover{color:var(--red)}
+
+/* 명단 확정 바 */
+.confirm-bar{display:none;background:var(--card);border:2px solid var(--green);border-radius:10px;padding:14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.confirm-bar.show{display:block}
+.confirm-bar h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--green)}
+.confirm-grid{display:flex;gap:8px;flex-wrap:wrap}
+.confirm-slot{padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--card2);cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;text-align:center;min-width:100px}
+.confirm-slot:hover{border-color:var(--accent);background:#eff6ff}
+.confirm-slot .cs-time{font-weight:900;font-size:16px;color:var(--accent)}
+.confirm-slot .cs-side{font-size:10px;color:var(--text2);margin-top:2px}
+.confirm-slot.taken{opacity:.3;pointer-events:none}
+
+/* 예산 바 */
+.budget-bar{display:flex;align-items:center;gap:16px;padding:14px 18px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;box-shadow:var(--shadow);flex-wrap:wrap}
+.budget-total{font-weight:900;font-size:34px;color:var(--orange)}
+.budget-total.over{color:var(--red);animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.budget-label{font-size:11px;color:var(--muted);font-weight:500}
+.budget-progress{flex:1;min-width:200px;height:10px;background:var(--card2);border-radius:5px;overflow:hidden}
+.budget-fill{height:100%;background:linear-gradient(90deg,var(--accent),#60a5fa);border-radius:5px;transition:width .3s}
+.budget-fill.warn{background:linear-gradient(90deg,var(--orange),var(--yellow))}
+.budget-fill.danger{background:linear-gradient(90deg,var(--red),#f87171)}
+.budget-config input{padding:5px 8px;background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:15px;width:70px;text-align:center;font-family:inherit;font-weight:700}
+.budget-config input:focus{outline:none;border-color:var(--accent)}
+
+/* 패널티 */
+.penalty-bar{display:none;padding:10px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;margin-bottom:16px;font-size:12px;color:#9a3412}
+.penalty-bar.show{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.penalty-tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:#fff;border:1px solid #fdba74;border-radius:5px;font-weight:700;font-size:11px}
+.penalty-tag .val{color:var(--red);font-weight:900;font-size:14px}
+
+/* 팀 슬롯 */
+.team-slots{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+@media(max-width:900px){.team-slots{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.team-slots{grid-template-columns:repeat(2,1fr)}}
+.slot{background:var(--card);border:2px solid var(--border);border-radius:10px;padding:14px;text-align:center;min-height:140px;cursor:pointer;transition:all .2s;position:relative;box-shadow:var(--shadow)}
+.slot:hover{border-color:var(--muted)}
+.slot.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.slot.filled{border-color:var(--green)}
+.slot.locked{border-color:var(--orange);background:#fffbeb}
+.slot .pos-label{font-weight:900;font-size:16px;color:var(--accent);margin-bottom:6px}
+.slot .player-name{font-size:13px;font-weight:700;margin-top:6px}
+.slot .player-score{font-weight:900;font-size:22px;color:var(--orange);margin-top:2px}
+.slot .player-tier{font-size:10px;color:var(--text2);margin-top:2px}
+.slot .player-img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--green);margin:0 auto}
+.slot .slot-btns{position:absolute;top:5px;right:5px;display:flex;gap:3px}
+.slot .lock-btn{background:#fff;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 5px;font-size:10px;cursor:pointer;font-family:inherit}
+.slot .lock-btn.locked{background:#fef3c7;border-color:var(--orange);color:var(--orange)}
+.slot .remove-btn{background:#fff;border:1px solid #fecaca;color:var(--red);border-radius:4px;padding:2px 5px;font-size:10px;cursor:pointer;font-family:inherit}
+.slot .empty-icon{font-size:36px;color:var(--muted);margin:10px 0}
+
+/* 수동 추가 */
+.manual-add{display:none;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.manual-add.show{display:block}
+.manual-add h3{font-size:14px;font-weight:700;margin-bottom:10px}
+.manual-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.manual-row select,.manual-row input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--card)}
+.manual-row select:focus,.manual-row input:focus{outline:none;border-color:var(--accent)}
+.manual-row input[type=text]{flex:1;min-width:100px}
+.manual-row input[type=number]{width:80px}
+
+/* 포지션 필터 */
+.pos-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.pos-tab{padding:7px 14px;border-radius:6px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;box-shadow:var(--shadow)}
+.pos-tab:hover{border-color:var(--muted)}
+.pos-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.pos-tab .count{font-size:10px;opacity:.7;margin-left:3px}
+
+/* 선수 리스트 */
+.player-section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.player-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px}
+.player-card{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.player-card:hover{border-color:var(--accent);background:#f0f5ff}
+.player-card.disabled{opacity:.2;pointer-events:none}
+.player-card.picked{opacity:.25;pointer-events:none;background:var(--card2)}
+.player-card .p-img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--border);flex-shrink:0;background:var(--card2)}
+.player-card .p-info{flex:1;min-width:0}
+.player-card .p-name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
+.lol-link{font-size:10px;background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;text-decoration:none;font-weight:700;flex-shrink:0;cursor:pointer;border:none;font-family:inherit;position:relative}
+.lol-link:hover{background:#1d4ed8}
+.p-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.lol-popup{width:280px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;z-index:1001;box-shadow:0 8px 24px rgba(0,0,0,.15);max-height:300px;overflow-y:auto}
+.lol-popup .lol-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:5px;cursor:pointer;transition:all .12s;text-decoration:none;margin-bottom:3px;border:1px solid var(--border);background:var(--card2);color:var(--text)}
+.lol-popup .lol-item:hover{border-color:var(--accent);background:#eff6ff}
+.lol-popup .lol-tier{font-size:9px;font-weight:900;padding:1px 5px;border-radius:3px;flex-shrink:0;text-transform:uppercase}
+.lol-popup .lol-name{font-size:12px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lol-popup .lol-tag{font-size:10px;color:var(--muted)}
+.lol-popup .lol-lp{font-size:10px;font-weight:700;color:var(--orange)}
+.lol-popup .lol-go{font-size:11px;color:var(--muted)}
+.tier-CHALLENGER{background:#ffd700;color:#000}.tier-GRANDMASTER{background:#dc2626;color:#fff}.tier-MASTER{background:#9333ea;color:#fff}.tier-DIAMOND{background:#60a5fa;color:#fff}.tier-EMERALD{background:#10b981;color:#fff}.tier-PLATINUM{background:#06b6d4;color:#fff}.tier-GOLD{background:#f59e0b;color:#fff}.tier-SILVER{background:#9ca3af;color:#fff}.tier-BRONZE{background:#b45309;color:#fff}.tier-IRON{background:#78716c;color:#fff}.tier-unranked{background:var(--card2);color:var(--muted)}
+.lol-popup .lol-loading{text-align:center;padding:12px;color:var(--muted);font-size:12px}
+.player-card .p-sub{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.player-card .p-score{font-weight:900;font-size:22px;color:var(--orange);flex-shrink:0}
+.player-card .live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red);margin-right:3px;animation:blink 1.2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* 검색 */
+.search-bar{margin-bottom:10px}
+.search-bar input{width:100%;padding:9px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;box-shadow:var(--shadow)}
+.search-bar input:focus{outline:none;border-color:var(--accent)}
+.sort-bar{display:flex;gap:4px;margin-bottom:10px}
+.sort-btn{padding:4px 10px;border-radius:4px;background:var(--card);border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;font-family:inherit}
+.sort-btn.active{border-color:var(--accent);color:var(--accent);background:#eff6ff}
+</style>
+</head>
+<body>
+<div class="layout">
+  <!-- 사이드바: 시간대별 확정 명단 -->
+  <div class="sidebar">
+    <div class="sidebar-title">시간대별 명단 <button class="btn btn-red btn-sm" onclick="resetAllRoster()">전체 초기화</button></div>
+    <div id="rosterSidebar"></div>
+  </div>
+
+  <!-- 메인: 드래프트 -->
+  <div class="main">
+    <div class="header">
+      <div class="header-left">
+        <span class="title">SOOP 멸망전</span>
+        <span class="badge">구인구직FA</span>
+      </div>
+      <div class="header-right">
+        <button class="btn" onclick="toggleManual()">+ 수동 추가</button>
+        <span class="poll-timer" id="pollTimer" onclick="fetchPlayers()" title="클릭하면 즉시 갱신">30s</span>
+        <button class="btn btn-red" onclick="resetDraft()">초기화</button>
+        <div class="budget-config">
+          <input id="totalBudgetInput" type="number" value="187" onchange="updateBudget()" title="총점">
+        </div>
+        <span class="status-text" id="statusText">로딩 중...</span>
+      </div>
+    </div>
+
+    <!-- 명단 확정 (5명 완성 시) -->
+    <div class="confirm-bar" id="confirmBar">
+      <h3>5명 완성! 시간대에 배정하세요</h3>
+      <div class="confirm-grid" id="confirmGrid"></div>
+    </div>
+
+    <div class="budget-bar">
+      <div>
+        <div class="budget-label">남은 점수</div>
+        <div class="budget-total" id="budgetRemain">187</div>
+      </div>
+      <div class="budget-progress">
+        <div class="budget-fill" id="budgetFill" style="width:0%"></div>
+      </div>
+      <div style="text-align:right">
+        <div class="budget-label">사용 / 총점</div>
+        <div style="font-size:15px;font-weight:700"><span id="budgetUsed">0</span> / <span id="budgetMax">187</span></div>
+      </div>
+    </div>
+
+    <div class="penalty-bar" id="penaltyBar"></div>
+    <div class="team-slots" id="teamSlots"></div>
+
+    <div class="manual-add" id="manualAdd">
+      <h3>수동 선수 추가</h3>
+      <div class="manual-row">
+        <select id="manualPos"><option value="탑">탑</option><option value="정글">정글</option><option value="미드">미드</option><option value="원딜">원딜</option><option value="서폿">서폿</option></select>
+        <input type="text" id="manualName" placeholder="닉네임">
+        <input type="number" id="manualScore" placeholder="점수" step="0.1">
+        <input type="text" id="manualUserId" placeholder="SOOP ID (선택)">
+        <input type="text" id="manualGameNick" placeholder="롤닉네임 (예: 닉#태그)">
+        <button class="btn btn-green" onclick="addManual()">추가</button>
+      </div>
+    </div>
+
+    <div class="pos-tabs" id="posTabs"></div>
+    <div class="search-bar"><input id="searchInput" placeholder="선수 이름 검색..." oninput="renderPlayers()"></div>
+    <div class="sort-bar">
+      <button class="sort-btn active" data-sort="score-desc" onclick="setSort(this)">점수 높은순</button>
+      <button class="sort-btn" data-sort="score-asc" onclick="setSort(this)">점수 낮은순</button>
+      <button class="sort-btn" data-sort="name" onclick="setSort(this)">이름순</button>
+    </div>
+    <div class="player-section">
+      <div class="player-grid" id="playerGrid">
+        <div style="color:var(--muted);padding:40px;text-align:center;grid-column:1/-1"><span class="loading-spinner"></span> 불러오는 중...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var POSITIONS = ['탑','정글','미드','원딜','서폿'];
+var POS_ICONS = {'탑':'🗡️','정글':'🌿','미드':'⚡','원딜':'🏹','서폿':'🛡️'};
+var DEFAULT_SLOTS = ['20시','22시','24시','02시'];
+var TIME_SLOTS = DEFAULT_SLOTS.slice();
+var SIDES = ['우리팀','상대팀'];
+
+var players = [];
+var team = {};
+var locked = {};
+var totalBudget = 187;
+var activePos = '전체';
+var currentSort = 'score-desc';
+var activeSlot = null;
+var positionCounts = {};
+
+// 시간대별 확정 명단: { '20시': { '우리팀': {탑:{...},...}, '상대팀': {...} }, ... }
+var roster = {};
+TIME_SLOTS.forEach(function(t) { roster[t] = {'우리팀':null,'상대팀':null}; });
+var showEnemy = {}; // 상대팀 표시 여부
+TIME_SLOTS.forEach(function(t) { showEnemy[t] = false; });
+
+function soopImg(userId) {
+  if (!userId) return '';
+  return 'https://profile.img.sooplive.co.kr/LOGO/' + userId.slice(0,2) + '/' + userId + '/' + userId + '.jpg';
+}
+
+function saveLocal() {
+  localStorage.setItem('mk_draft3', JSON.stringify({team:team, locked:locked, totalBudget:totalBudget, roster:roster, timeSlots:TIME_SLOTS}));
+}
+function loadLocal() {
+  try {
+    var d = JSON.parse(localStorage.getItem('mk_draft3'));
+    if (d) {
+      if (d.timeSlots && d.timeSlots.length) {
+        TIME_SLOTS = d.timeSlots;
+        // roster에 새 슬롯 초기화
+        TIME_SLOTS.forEach(function(t) {
+          if (!roster[t]) roster[t] = {'우리팀':null,'상대팀':null};
+          if (showEnemy[t] === undefined) showEnemy[t] = false;
+        });
+      }
+      team = d.team || {};
+      locked = d.locked || {};
+      totalBudget = d.totalBudget || 187;
+      if (d.roster) roster = d.roster;
+      document.getElementById('totalBudgetInput').value = totalBudget;
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function fetchPlayers(silent) {
+  var statusEl = document.getElementById('statusText');
+  if (!silent) statusEl.innerHTML = '<span class="loading-spinner"></span> 로딩 중...';
+  resetCountdown();
+  fetch('/api/draft/players?season=22').then(function(r) { return r.json(); }).then(function(data) {
+    if (data.error) { if (!silent) statusEl.textContent = 'Error: ' + data.error; return; }
+    players = data.players || [];
+    positionCounts = data.positionCounts || {};
+    syncPicked();
+    var now = new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    statusEl.textContent = players.length + '명 · ' + now;
+    renderAll();
+  }).catch(function(err) {
+    if (!silent) statusEl.textContent = 'Error: ' + err.message;
+  });
+}
+
+function syncPicked() {
+  players.forEach(function(p) {
+    p.picked = false;
+    POSITIONS.forEach(function(pos) {
+      if (team[pos] && team[pos].name === p.name && team[pos].position === p.position) p.picked = true;
+    });
+  });
+}
+
+function updateBudget() {
+  totalBudget = parseInt(document.getElementById('totalBudgetInput').value) || 187;
+  saveLocal(); renderBudget(); renderPlayers();
+}
+function getUsed() {
+  var u = 0; POSITIONS.forEach(function(pos) { if (team[pos]) u += team[pos].score; }); return u;
+}
+
+function parseTierLP(highTier) {
+  if (!highTier) return -1;
+  var m = highTier.match(/마그챌\s*(\d+)/);
+  if (m) return parseInt(m[1]);
+  if (/마스터|그랜드|챌린저|마그챌/.test(highTier)) return 0;
+  return -1;
+}
+function getChallengerPoint(lp) {
+  if (lp >= 1300) return 4;
+  if (lp >= 900) return 3;
+  if (lp >= 600) return 2;
+  if (lp >= 500) return 1;
+  return 0;
+}
+function calcPenaltyFor(t) {
+  var penalties = [], totalPenalty = 0, members = [];
+  POSITIONS.forEach(function(pos) {
+    if (t && t[pos]) { members.push({ lp: parseTierLP(t[pos].highTier) }); }
+  });
+  var chal500 = members.filter(function(m) { return m.lp >= 500; });
+  if (chal500.length >= 3) {
+    var chalSum = 0;
+    chal500.forEach(function(m) { chalSum += getChallengerPoint(m.lp); });
+    var cp = Math.min(chalSum, 7);
+    if (cp >= 3) { penalties.push({ label:'3챌', value:cp }); totalPenalty += cp; }
+  }
+  var master0 = members.filter(function(m) { return m.lp >= 0; });
+  if (master0.length >= 4) { penalties.push({ label:'4~5마', value:5 }); totalPenalty += 5; }
+  return { penalties:penalties, total:totalPenalty };
+}
+function calcPenalty() { return calcPenaltyFor(team); }
+function getRemain() { return totalBudget - getUsed() - calcPenalty().total; }
+
+function renderBudget() {
+  var used = getUsed(), pen = calcPenalty(), totalUsed = used + pen.total, remain = totalBudget - totalUsed;
+  var pct = totalBudget > 0 ? (totalUsed / totalBudget * 100) : 0;
+  document.getElementById('budgetRemain').textContent = remain % 1 === 0 ? remain : remain.toFixed(1);
+  document.getElementById('budgetUsed').textContent = (totalUsed % 1 === 0 ? totalUsed : totalUsed.toFixed(1)) + (pen.total > 0 ? ' (패널티+' + pen.total + ')' : '');
+  document.getElementById('budgetMax').textContent = totalBudget;
+  var fill = document.getElementById('budgetFill');
+  fill.style.width = Math.min(pct, 100) + '%';
+  fill.className = 'budget-fill' + (pct > 90 ? ' danger' : pct > 70 ? ' warn' : '');
+  document.getElementById('budgetRemain').className = 'budget-total' + (remain < 0 ? ' over' : '');
+  var pBar = document.getElementById('penaltyBar');
+  if (pen.penalties.length > 0) {
+    var ph = '';
+    pen.penalties.forEach(function(p) { ph += '<div class="penalty-tag">' + p.label + ' <span class="val">+' + p.value + '</span></div>'; });
+    pBar.innerHTML = '<span style="font-weight:700">패널티</span>' + ph;
+    pBar.className = 'penalty-bar show';
+  } else { pBar.className = 'penalty-bar'; }
+}
+
+function renderSlots() {
+  var html = '';
+  POSITIONS.forEach(function(pos) {
+    var p = team[pos], isActive = activeSlot === pos, isLocked = !!locked[pos];
+    if (p) {
+      html += '<div class="slot filled' + (isActive ? ' active' : '') + (isLocked ? ' locked' : '') + '" onclick="selectSlot(\'' + pos + '\')">'
+        + '<div class="slot-btns"><button class="lock-btn' + (isLocked ? ' locked' : '') + '" onclick="event.stopPropagation();toggleLock(\'' + pos + '\')">' + (isLocked ? '🔒' : '🔓') + '</button>'
+        + '<button class="remove-btn" onclick="event.stopPropagation();removePlayer(\'' + pos + '\')">✕</button></div>'
+        + '<div class="pos-label">' + pos + '</div>'
+        + '<img class="player-img" src="' + (p.image || 'icon.png') + '" onerror="this.src=\'icon.png\'">'
+        + '<div class="player-name">' + p.name + '</div>'
+        + '<div class="player-score">' + p.score + '</div>'
+        + (p.highTier ? '<div class="player-tier">' + p.highTier + '</div>' : '') + '</div>';
+    } else {
+      html += '<div class="slot' + (isActive ? ' active' : '') + '" onclick="selectSlot(\'' + pos + '\')">'
+        + '<div class="pos-label">' + pos + '</div><div class="empty-icon">+</div>'
+        + '<div style="font-size:11px;color:var(--muted)">클릭하여 선택</div></div>';
+    }
+  });
+  document.getElementById('teamSlots').innerHTML = html;
+}
+
+function renderPosTabs() {
+  var counts = {'전체': players.length};
+  POSITIONS.forEach(function(pos) { counts[pos] = positionCounts[pos] || 0; });
+  var html = '';
+  ['전체'].concat(POSITIONS).forEach(function(pos) {
+    html += '<button class="pos-tab' + (activePos === pos ? ' active' : '') + '" onclick="setActivePos(\'' + pos + '\')">'
+      + pos + '<span class="count">' + (counts[pos] || 0) + '</span></button>';
+  });
+  document.getElementById('posTabs').innerHTML = html;
+}
+
+function renderPlayers() {
+  var grid = document.getElementById('playerGrid');
+  if (players.length === 0) { grid.innerHTML = '<div style="color:var(--muted);padding:40px;text-align:center;grid-column:1/-1"><span class="loading-spinner"></span> 불러오는 중...</div>'; return; }
+  var remain = getRemain(), search = document.getElementById('searchInput').value.toLowerCase();
+  var filtered = players.filter(function(p) {
+    if (activePos !== '전체' && p.position !== activePos) return false;
+    if (search && p.name.toLowerCase().indexOf(search) < 0) return false;
+    if (!p.picked && p.score > remain + 0.09) return false;
+    return true;
+  });
+  filtered.sort(function(a, b) {
+    if (currentSort === 'score-desc') return b.score - a.score;
+    if (currentSort === 'score-asc') return a.score - b.score;
+    return a.name.localeCompare(b.name, 'ko');
+  });
+  var html = '';
+  filtered.forEach(function(p) {
+    var isPicked = p.picked, posFilled = !!team[p.position], tooExpensive = p.score > remain + 0.09 && !isPicked;
+    var cls = 'player-card';
+    if (isPicked) cls += ' picked'; else if (posFilled || tooExpensive) cls += ' disabled';
+    var lolLink = p.gameNick ? 'https://www.fow.lol/find/' + encodeURIComponent(p.gameNick.replace('#','-')) : '';
+    html += '<div class="' + cls + '" onclick="pickPlayer(\'' + p.position + '\',\'' + escH(p.name) + '\')">'
+      + '<img class="p-img" src="' + (p.image || 'icon.png') + '" onerror="this.src=\'icon.png\'">'
+      + '<div class="p-info"><div class="p-name">' + (p.broading ? '<span class="live-dot"></span>' : '') + p.name + '</div>'
+      + '<div class="p-sub">' + p.position + (p.highTier ? ' · ' + p.highTier : '') + '</div></div>'
+      + '<div class="p-right"><div class="p-score">' + p.score + '</div>'
+      + '<button class="lol-link" onclick="event.stopPropagation();openLolPopup(this,\'' + escH(p.name) + '\',\'' + escH(p.gameNick||'') + '\')">전적</button></div></div>';
+  });
+  if (!html) html = '<div style="color:var(--muted);padding:20px;text-align:center;grid-column:1/-1">조건에 맞는 선수가 없습니다</div>';
+  grid.innerHTML = html;
+}
+
+function escH(s) { return s.replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function selectSlot(pos) { activeSlot = (activeSlot === pos) ? null : pos; activePos = activeSlot || '전체'; renderSlots(); renderPosTabs(); renderPlayers(); }
+function setActivePos(pos) { activePos = pos; activeSlot = (pos !== '전체' && !team[pos]) ? pos : null; renderPosTabs(); renderSlots(); renderPlayers(); }
+
+function pickPlayer(position, name) {
+  var p = players.find(function(pl) { return pl.position === position && pl.name === name; });
+  if (!p || p.picked || team[position] || p.score > getRemain() + 0.09) return;
+  p.picked = true;
+  team[position] = {name:p.name, score:p.score, position:p.position, image:p.image, highTier:p.highTier, userId:p.userId, gameNick:p.gameNick||''};
+  document.getElementById('searchInput').value = '';
+  activeSlot = null;
+  for (var i = 0; i < POSITIONS.length; i++) { if (!team[POSITIONS[i]]) { activeSlot = POSITIONS[i]; activePos = POSITIONS[i]; break; } }
+  if (!activeSlot) activePos = '전체';
+  saveLocal(); renderAll();
+}
+
+function removePlayer(position) {
+  var p = team[position]; if (!p) return;
+  if (locked[position]) { if (!confirm(p.name + ' 고정 해제 후 제거?')) return; delete locked[position]; }
+  players.forEach(function(pl) { if (pl.position === p.position && pl.name === p.name) pl.picked = false; });
+  delete team[position]; activeSlot = position; activePos = position;
+  saveLocal(); renderAll();
+}
+function toggleLock(pos) { if (locked[pos]) delete locked[pos]; else locked[pos] = true; saveLocal(); renderSlots(); }
+
+function resetDraft() {
+  var cnt = 0; POSITIONS.forEach(function(pos) { if (team[pos] && !locked[pos]) cnt++; });
+  if (cnt === 0) return;
+  if (!confirm('고정되지 않은 선수를 초기화?')) return;
+  POSITIONS.forEach(function(pos) {
+    if (team[pos] && !locked[pos]) { players.forEach(function(pl) { if (pl.position === team[pos].position && pl.name === team[pos].name) pl.picked = false; }); delete team[pos]; }
+  });
+  activeSlot = null; activePos = '전체'; saveLocal(); renderAll();
+}
+
+function toggleManual() { document.getElementById('manualAdd').classList.toggle('show'); }
+function addManual() {
+  var pos = document.getElementById('manualPos').value, name = document.getElementById('manualName').value.trim();
+  var score = parseFloat(document.getElementById('manualScore').value), userId = document.getElementById('manualUserId').value.trim();
+  var gameNick = document.getElementById('manualGameNick').value.trim();
+  if (!name) return alert('닉네임을 입력하세요'); if (isNaN(score)) return alert('점수를 입력하세요');
+  if (team[pos]) return alert(pos + ' 이미 채워짐'); if (score > getRemain()) return alert('예산 초과');
+  team[pos] = {name:name, score:score, position:pos, image:soopImg(userId), highTier:'', userId:userId, gameNick:gameNick};
+  document.getElementById('manualName').value = ''; document.getElementById('manualScore').value = ''; document.getElementById('manualUserId').value = ''; document.getElementById('manualGameNick').value = '';
+  syncPicked(); saveLocal(); renderAll();
+}
+function setSort(btn) { document.querySelectorAll('.sort-btn').forEach(function(b) { b.classList.remove('active'); }); btn.classList.add('active'); currentSort = btn.dataset.sort; renderPlayers(); }
+
+// ========== 명단 확정 ==========
+function isTeamFull() {
+  var cnt = 0; POSITIONS.forEach(function(pos) { if (team[pos]) cnt++; }); return cnt === 5;
+}
+
+function renderConfirmBar() {
+  var el = document.getElementById('confirmBar');
+  if (!isTeamFull()) { el.className = 'confirm-bar'; return; }
+  el.className = 'confirm-bar show';
+  var html = '';
+  TIME_SLOTS.forEach(function(t) {
+    SIDES.forEach(function(s) {
+      if (s === '상대팀' && !showEnemy[t] && !roster[t]['상대팀']) return;
+      var taken = !!roster[t][s];
+      html += '<div class="confirm-slot' + (taken ? ' taken' : '') + '" onclick="confirmTeam(\'' + t + '\',\'' + s + '\')">'
+        + '<div class="cs-time">' + t + '</div><div class="cs-side">' + s + (taken ? ' (확정)' : '') + '</div></div>';
+    });
+  });
+  document.getElementById('confirmGrid').innerHTML = html;
+}
+
+function confirmTeam(time, side) {
+  if (roster[time][side]) { if (!confirm(time + ' ' + side + ' 이미 있습니다. 덮어쓸까요?')) return; }
+  var snapshot = {};
+  POSITIONS.forEach(function(pos) {
+    if (!team[pos]) return;
+    var s = Object.assign({}, team[pos]);
+    // players 배열에서 최신 gameNick/userId 보충
+    if (!s.gameNick || !s.userId) {
+      var match = players.find(function(pl) { return pl.name === s.name && pl.position === s.position; });
+      if (match) { if (!s.gameNick) s.gameNick = match.gameNick || ''; if (!s.userId) s.userId = match.userId || ''; }
+    }
+    snapshot[pos] = s;
+  });
+  snapshot._penalty = calcPenalty().total;
+  snapshot._used = getUsed() + calcPenalty().total;
+  roster[time][side] = snapshot;
+  // 드래프트 초기화
+  POSITIONS.forEach(function(pos) {
+    if (team[pos] && !locked[pos]) { players.forEach(function(pl) { if (pl.position === team[pos].position && pl.name === team[pos].name) pl.picked = false; }); delete team[pos]; }
+  });
+  activeSlot = null; activePos = '전체';
+  saveLocal(); renderAll();
+}
+
+function removeRoster(time, side) {
+  if (!confirm(time + ' ' + side + ' 명단을 삭제?')) return;
+  roster[time][side] = null;
+  if (side === '상대팀') showEnemy[time] = false;
+  saveLocal(); renderAll();
+}
+
+function resetAllRoster() {
+  if (!confirm('모든 시간대 명단을 초기화?')) return;
+  TIME_SLOTS.forEach(function(t) { roster[t] = {'우리팀':null,'상대팀':null}; });
+  saveLocal(); renderAll();
+}
+
+function addTimeSlot() {
+  var label = prompt('추가할 시간대 입력 (예: 04시, 26일 20시)');
+  if (!label || !label.trim()) return;
+  label = label.trim();
+  if (TIME_SLOTS.indexOf(label) >= 0) return alert('이미 존재하는 시간대입니다.');
+  TIME_SLOTS.push(label);
+  roster[label] = {'우리팀':null,'상대팀':null};
+  showEnemy[label] = false;
+  saveLocal(); renderAll();
+}
+
+function removeTimeSlot(t) {
+  if (roster[t]['우리팀'] || roster[t]['상대팀']) {
+    if (!confirm(t + ' 명단이 있습니다. 삭제할까요?')) return;
+  }
+  TIME_SLOTS = TIME_SLOTS.filter(function(s) { return s !== t; });
+  delete roster[t]; delete showEnemy[t];
+  saveLocal(); renderAll();
+}
+
+function removeRosterPlayer(time, side, pos) {
+  var r = roster[time] && roster[time][side];
+  if (!r || !r[pos]) return;
+  if (!confirm(r[pos].name + ' 제거? 나머지 선수는 드래프트로 복귀합니다.')) return;
+  // 현재 드래프트 초기화 (고정 제외)
+  POSITIONS.forEach(function(p) {
+    if (team[p] && !locked[p]) {
+      players.forEach(function(pl) { if (pl.position === team[p].position && pl.name === team[p].name) pl.picked = false; });
+      delete team[p];
+    }
+  });
+  // 나머지 4명을 드래프트 슬롯에 로드
+  POSITIONS.forEach(function(p) {
+    if (p === pos) return; // 제거된 포지션은 비워둠
+    if (r[p]) {
+      team[p] = Object.assign({}, r[p]);
+    }
+  });
+  // 로스터에서 해당 슬롯 제거
+  roster[time][side] = null;
+  if (side === '상대팀' && !roster[time]['상대팀']) showEnemy[time] = false;
+  // picked 동기화
+  syncPicked();
+  // 제거된 포지션을 활성 슬롯으로
+  activeSlot = pos;
+  activePos = pos;
+  saveLocal(); renderAll();
+}
+
+function resetSlotRoster(t) {
+  if (!confirm(t + ' 명단을 초기화?')) return;
+  roster[t] = {'우리팀':null,'상대팀':null};
+  showEnemy[t] = false;
+  saveLocal(); renderAll();
+}
+
+function toggleEnemy(t) {
+  showEnemy[t] = !showEnemy[t];
+  renderSidebar();
+}
+
+function renderSidebar() {
+  var html = '';
+  TIME_SLOTS.forEach(function(t) {
+    var my = roster[t]['우리팀'], en = roster[t]['상대팀'];
+    var enemyVisible = showEnemy[t] || !!en;
+    var filled = (my ? 1 : 0) + (en ? 1 : 0);
+    var maxCount = enemyVisible ? 2 : 1;
+    var isCustom = DEFAULT_SLOTS.indexOf(t) < 0;
+    html += '<div class="time-block"><div class="time-header"><span class="time-label">' + t + '</span>';
+    if (isCustom) html += '<button class="del-slot" onclick="removeTimeSlot(\'' + t.replace(/'/g,"\\'") + '\')" title="삭제">✕</button>';
+    if (!enemyVisible) {
+      html += '<button class="enemy-toggle" onclick="toggleEnemy(\'' + t + '\')">+ 상대팀</button>';
+    } else {
+      html += '<button class="enemy-toggle active" onclick="toggleEnemy(\'' + t + '\')">상대팀 숨기기</button>';
+    }
+    html += '<span class="time-status">' + filled + '/' + maxCount + '</span></div><div class="time-body">';
+    // 우리팀 (좌)
+    html += '<div class="match-side"><div class="match-side-label"><span>우리팀</span>';
+    if (my) html += '<button class="del-btn" onclick="removeRoster(\'' + t + '\',\'우리팀\')">삭제</button>';
+    html += '</div>';
+    if (my) { html += renderSideTeam(my, t, '우리팀'); } else { html += '<div class="empty-side">미배정</div>'; }
+    html += '</div>';
+    // 상대팀 (우) - 토글 시 또는 데이터 있을 때만
+    if (enemyVisible) {
+      html += '<div class="vs-divider">VS</div>';
+      html += '<div class="match-side"><div class="match-side-label"><span>상대팀</span>';
+      if (en) html += '<button class="del-btn" onclick="removeRoster(\'' + t + '\',\'상대팀\')">삭제</button>';
+      html += '</div>';
+      if (en) { html += renderSideTeam(en, t, '상대팀'); } else { html += '<div class="empty-side">미배정</div>'; }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+  html += '<button class="add-slot-btn" onclick="addTimeSlot()">+ 시간대 추가</button>';
+  document.getElementById('rosterSidebar').innerHTML = html;
+}
+
+function renderSideTeam(t, time, side) {
+  var h = '', total = 0;
+  POSITIONS.forEach(function(pos) {
+    var p = t[pos]; if (!p) return;
+    total += p.score;
+    var livePlayer = players.find(function(pl) { return pl.userId === p.userId; });
+    var isLive = livePlayer ? livePlayer.broading : false;
+    var soopUrl = p.userId ? 'https://play.sooplive.co.kr/' + p.userId : '';
+    var lolLink = p.gameNick ? 'https://www.fow.lol/find/' + encodeURIComponent(p.gameNick.replace('#','-')) : '';
+    var links = '<span class="sr-links">';
+    if (soopUrl) {
+      links += isLive
+        ? '<a class="sr-link-live" href="' + soopUrl + '" target="_blank" onclick="event.stopPropagation()">LIVE</a>'
+        : '<a class="sr-link-off" href="' + soopUrl + '" target="_blank" onclick="event.stopPropagation()">방송</a>';
+    }
+    if (lolLink) links += '<a class="sr-link-lol" href="' + lolLink + '" target="_blank" onclick="event.stopPropagation()">전적</a>';
+    links += '</span>';
+    var delBtn = time ? '<span class="sr-del" onclick="removeRosterPlayer(\'' + time + '\',\'' + side + '\',\'' + pos + '\')" title="제거">✕</span>' : '';
+    h += '<div class="side-row"><img src="' + (p.image || 'icon.png') + '" onerror="this.src=\'icon.png\'"><span class="sr-pos">' + pos + '</span><span class="sr-name">' + p.name + '</span>' + links + '<span class="sr-score">' + p.score + '</span>' + delBtn + '</div>';
+  });
+  var pen = t._penalty || 0;
+  h += '<div class="side-total">' + (total % 1 === 0 ? total : total.toFixed(1)) + (pen > 0 ? ' <span class="pen">+' + pen + ' 패널티 = ' + (total + pen) + '</span>' : '') + '</div>';
+  return h;
+}
+
+function renderAll() { renderBudget(); renderSlots(); renderPosTabs(); renderPlayers(); renderConfirmBar(); renderSidebar(); }
+
+// 자동 폴링 30초
+var pollTimer = null, countdownTimer = null, pollCountdown = 30;
+function startPolling() {
+  stopPolling();
+  pollCountdown = 30;
+  countdownTimer = setInterval(function() {
+    pollCountdown--;
+    var el = document.getElementById('pollTimer');
+    if (el) el.textContent = pollCountdown + 's';
+    if (pollCountdown <= 0) {
+      pollCountdown = 30;
+      fetchPlayers(true);
+    }
+  }, 1000);
+}
+function stopPolling() { if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; } }
+function resetCountdown() { pollCountdown = 30; var el = document.getElementById('pollTimer'); if (el) el.textContent = '30s'; }
+
+// ========== LoL 전적 팝업 ==========
+var tierOrder = {CHALLENGER:0,GRANDMASTER:1,MASTER:2,DIAMOND:3,EMERALD:4,PLATINUM:5,GOLD:6,SILVER:7,BRONZE:8,IRON:9,unranked:10};
+var lolCache = {};
+
+function closeLolPopup() {
+  var old = document.querySelector('.lol-popup');
+  if (old) old.remove();
+  document.removeEventListener('click', closeLolPopupOutside);
+}
+function closeLolPopupOutside(e) {
+  var popup = document.querySelector('.lol-popup');
+  if (popup && !popup.contains(e.target) && !e.target.classList.contains('lol-link')) closeLolPopup();
+}
+
+// 브라우저에서 직접 DeepLoL API 호출 (main-dashboard와 동일)
+function fetchDeepLolDirect(queryName, status) {
+  return fetch('https://b2c-api-cdn.deeplol.gg/summoner/strm_pro_info?name=' + encodeURIComponent(queryName) + '&status=' + status)
+    .then(function(r) { return r.json(); })
+    .then(function(d) { return (d && d.account_list && d.account_list.length > 0) ? d : null; })
+    .catch(function() { return null; });
+}
+function searchAutoCompleteDirect(keyword) {
+  return fetch('https://b2c-api-cdn.deeplol.gg/summoner/pro-search-auto-complete?search_string=' + encodeURIComponent(keyword) + '&riot_id_tag_line=')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.streamer && d.streamer.length > 0) return { player_name: d.streamer[0].player_name, status: 'streamer' };
+      if (d.pro && d.pro.length > 0) return { player_name: d.pro[0].player_name, status: 'pro' };
+      return null;
+    }).catch(function() { return null; });
+}
+async function deepLolLookup(name) {
+  var names = [name];
+  var cleaned = name.replace(/^[^가-힣a-zA-Z0-9]+/, '').replace(/[^가-힣a-zA-Z0-9]+$/, '').trim();
+  if (cleaned && cleaned !== name) names.push(cleaned);
+  var korOnly = name.replace(/[^가-힣]/g, '');
+  if (korOnly.length >= 2 && korOnly !== name && korOnly !== cleaned) names.push(korOnly);
+  // 1단계: 직접 조회
+  for (var si = 0; si < 2; si++) {
+    var st = si === 0 ? 'streamer' : 'pro';
+    for (var ni = 0; ni < names.length; ni++) {
+      var r = await fetchDeepLolDirect(names[ni], st);
+      if (r) return r;
+    }
+  }
+  // 2단계: auto-complete
+  var found = null;
+  for (var i = 0; i < names.length && !found; i++) {
+    found = await searchAutoCompleteDirect(names[i]);
+  }
+  // 3단계: 접두사 축소
+  if (!found) {
+    var base = korOnly.length >= 2 ? korOnly : (cleaned || name);
+    for (var len = base.length - 1; len >= 2 && !found; len--) {
+      found = await searchAutoCompleteDirect(base.substring(0, len));
+    }
+  }
+  if (found) return await fetchDeepLolDirect(found.player_name, found.status);
+  return null;
+}
+
+function openLolPopup(btn, name, gameNick) {
+  closeLolPopup();
+  var rect = btn.getBoundingClientRect();
+  var popup = document.createElement('div');
+  popup.className = 'lol-popup';
+  popup.style.position = 'absolute';
+  popup.style.top = (rect.bottom + window.scrollY + 4) + 'px';
+  popup.style.right = (document.documentElement.clientWidth - rect.right) + 'px';
+  popup.innerHTML = '<div class="lol-loading"><span class="loading-spinner"></span> 검색 중...</div>';
+  document.body.appendChild(popup);
+  setTimeout(function() { document.addEventListener('click', closeLolPopupOutside); }, 10);
+
+  if (lolCache[name]) { renderLolPopup(popup, lolCache[name]); return; }
+
+  deepLolLookup(name).then(function(data) {
+    if (data && data.account_list && data.account_list.length > 0) {
+      lolCache[name] = data;
+      renderLolPopup(popup, data);
+    } else if (gameNick) {
+      var parts = gameNick.split('#');
+      var fallback = { account_list: [{ riot_id: parts[0], riot_tag: parts[1] || '', tier: '', lp: 0, _soop: true }] };
+      lolCache[name] = fallback;
+      renderLolPopup(popup, fallback);
+    } else {
+      popup.innerHTML = '<div class="lol-loading">계정을 찾을 수 없습니다</div>';
+    }
+  });
+}
+
+function renderLolPopup(popup, data) {
+  var accounts = (data.account_list || []).slice().sort(function(a, b) {
+    var ta = tierOrder[a.tier] !== undefined ? tierOrder[a.tier] : 99;
+    var tb = tierOrder[b.tier] !== undefined ? tierOrder[b.tier] : 99;
+    return ta !== tb ? ta - tb : (b.lp || 0) - (a.lp || 0);
+  });
+  popup.innerHTML = accounts.map(function(acc) {
+    var tier = acc._soop ? '' : (acc.tier || 'unranked');
+    var rid = acc.riot_id || acc.summoner_name || '';
+    var rtag = acc.riot_tag || '';
+    var lp = (acc.lp && tier !== 'unranked') ? acc.lp + ' LP' : '';
+    var fowUrl = 'https://fow.kr/find/' + encodeURIComponent(rid) + (rtag ? '-' + encodeURIComponent(rtag) : '');
+    return '<a class="lol-item" href="' + fowUrl + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">'
+      + (tier ? '<span class="lol-tier tier-' + tier + '">' + tier + '</span>' : '')
+      + '<span class="lol-name">' + rid + '</span>'
+      + (rtag ? '<span class="lol-tag">#' + rtag + '</span>' : '')
+      + (lp ? '<span class="lol-lp">' + lp + '</span>' : '')
+      + '<span class="lol-go">&rarr;</span></a>';
+  }).join('');
+}
+
+// init
+loadLocal();
+renderAll();
+fetchPlayers();
+startPolling();
+</script>
+</body>
+</html>

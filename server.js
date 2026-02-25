@@ -4,6 +4,8 @@ const path = require('path');
 const crypto = require('crypto');
 const { SoopClient, SoopChatEvent } = require('soop-extension');
 const { google } = require('googleapis');
+const https = require('https');
+let RIOT_API_KEY = process.env.RIOT_API_KEY || '';
 
 // 서버 크래시 방지 - 에러가 나도 서버가 죽지 않도록
 process.on('uncaughtException', (err) => {
@@ -106,9 +108,26 @@ let missionTemplates = [];   // 미션 틀
 let missionResults = [];     // 매칭된 결과
 let autoThreshold = 0;       // 이 값 이상이면 템플릿 없어도 자동등록 (0=비활성)
 
+// ─── LoL 트래커 상태 ───
+let lolState = {
+  config: { gameName: '', tagLine: '', puuid: '', summonerId: '', trackingActive: false },
+  rank: { tier: '', rank: '', lp: 0, wins: 0, losses: 0, updatedAt: '' },
+  lpHistory: [],        // [{timestamp, lp, tier, rank}] max 500
+  matches: [],          // 최근 50경기 상세
+  championStats: {},    // {championName: {wins, losses, kills, deaths, assists, games}}
+  session: { startTier: '', startRank: '', startLp: 0, startWins: 0, startLosses: 0, startedAt: '', gamesPlayed: 0, currentStreak: 0, streakType: '' },
+  liveGame: null,       // 현재 게임중이면 {championName, gameStartTime, participants}
+  reward: { masterReward: 0, missionReward: 0, totalReward: 0 },
+  rewardConfig: { master90: 70000, master80: 60000, master70: 50000, master60: 0 },
+  lastMatchId: '',
+};
+let ddragonVersion = '14.10.1';
+let championMap = {};  // key → {id, name, image}
+let lolPollTimer = null;
+
 function saveData() {
   try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify({ missionTemplates, missionResults, autoThreshold }));
+    fs.writeFileSync(DATA_FILE, JSON.stringify({ missionTemplates, missionResults, autoThreshold, lolState }));
   } catch(e) { console.error('💾 저장 실패:', e.message); }
 }
 function loadData() {
@@ -118,7 +137,12 @@ function loadData() {
       missionTemplates = d.missionTemplates || [];
       missionResults = d.missionResults || [];
       autoThreshold = d.autoThreshold || 0;
+      if (d.lolState) {
+        // 기존 키 유지하면서 저장된 값 덮어쓰기
+        Object.keys(d.lolState).forEach(k => { if (lolState.hasOwnProperty(k)) lolState[k] = d.lolState[k]; });
+      }
       console.log(`💾 데이터 복원: 템플릿 ${missionTemplates.length}개, 결과 ${missionResults.length}개`);
+      if (lolState.config.puuid) console.log(`🎮 LoL 트래커: ${lolState.config.gameName}#${lolState.config.tagLine} (${lolState.rank.tier} ${lolState.rank.rank})`);
     }
   } catch(e) { console.error('💾 복원 실패:', e.message); }
 }
@@ -148,7 +172,8 @@ function rosterCollect(uid, nick, amount, type, time) {
   var tf = rosterState.typeFilters;
   if (tf.indexOf('all') < 0 && tf.indexOf(type) < 0) return;
   if (type === 'video') return;
-  var units = Math.floor(amount / rosterState.threshold);
+  if (amount % rosterState.threshold !== 0) return;
+  var units = amount / rosterState.threshold;
   if (units < 1) return;
   var entryCount = units * rosterState.multiplier;
   // 대기 메시지 확인
@@ -204,7 +229,7 @@ function normalizeUid(uid) {
   return uid ? uid.replace(/\(\d+\)$/, '') : '';
 }
 
-const SAVE_EVENTS = new Set(['templates','result','resultUpdate','resultDelete','resetResults','autoThreshold']);
+const SAVE_EVENTS = new Set(['templates','result','resultUpdate','resultDelete','resetResults','autoThreshold','lolRank','lolMatches','lolSession','lolReward','lolConfig']);
 let saveTimer = null;
 function broadcast(event, data) {
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -521,7 +546,7 @@ function scheduleReconnect() {
   reconnectTimer = setTimeout(() => connectToSoop(), 10000);
 }
 
-function now() { return new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
+function now() { return new Date().toLocaleTimeString('ko-KR', { timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', second:'2-digit' }); }
 
 // SOOP 프로필 이미지 URL 생성 함수
 function getSOOPProfileImage(streamerId) {
@@ -590,6 +615,322 @@ async function searchSOOPStreamers(query) {
 }
 
 // ============================================
+// Riot Games API (LoL 트래커)
+// ============================================
+function riotGet(region, apiPath) {
+  // region: 'asia' (account, match) 또는 'kr' (summoner, league, spectator)
+  const host = region === 'asia' ? 'asia.api.riotgames.com' : 'kr.api.riotgames.com';
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: host,
+      path: apiPath,
+      headers: { 'X-Riot-Token': RIOT_API_KEY, 'Accept': 'application/json' }
+    };
+    https.get(options, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        if (res.statusCode === 429) {
+          const retryAfter = parseInt(res.headers['retry-after'] || '10');
+          console.log(`⚠️ Riot API 429 — ${retryAfter}초 후 재시도`);
+          setTimeout(() => riotGet(region, apiPath).then(resolve).catch(reject), retryAfter * 1000);
+          return;
+        }
+        if (res.statusCode === 404) return resolve(null);
+        if (res.statusCode !== 200) return reject(new Error(`Riot API ${res.statusCode}: ${data.substring(0,200)}`));
+        try { resolve(JSON.parse(data)); } catch(e) { reject(e); }
+      });
+    }).on('error', reject);
+  });
+}
+
+async function getAccountByRiotId(gameName, tagLine) {
+  return riotGet('asia', `/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`);
+}
+
+async function getLeagueByPuuid(puuid) {
+  const entries = await riotGet('kr', `/lol/league/v4/entries/by-puuid/${puuid}`);
+  if (!entries) return null;
+  return entries.find(e => e.queueType === 'RANKED_SOLO_5x5') || null;
+}
+
+async function getMatchIds(puuid, count) {
+  return riotGet('asia', `/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&count=${count || 20}`);
+}
+
+async function getMatchDetail(matchId) {
+  return riotGet('asia', `/lol/match/v5/matches/${matchId}`);
+}
+
+async function getActiveGame(puuid) {
+  return riotGet('kr', `/lol/spectator/v5/active-games/by-summoner/${puuid}`);
+}
+
+// DDragon 챔피언 이미지/이름 매핑
+async function initDDragon() {
+  try {
+    const versions = await new Promise((resolve, reject) => {
+      https.get('https://ddragon.leagueoflegends.com/api/versions.json', (res) => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+      }).on('error', reject);
+    });
+    if (versions && versions[0]) ddragonVersion = versions[0];
+
+    const champData = await new Promise((resolve, reject) => {
+      https.get(`https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/data/ko_KR/champion.json`, (res) => {
+        let data = '';
+        res.on('data', c => data += c);
+        res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(e); } });
+      }).on('error', reject);
+    });
+    if (champData && champData.data) {
+      Object.values(champData.data).forEach(c => {
+        championMap[c.key] = { id: c.id, name: c.name, image: c.image.full };
+      });
+      // 이름으로도 매핑 (Match API가 championName으로 줄 때)
+      Object.values(champData.data).forEach(c => {
+        championMap[c.id] = championMap[c.key];
+        championMap[c.name] = championMap[c.key];
+      });
+      console.log(`🎮 DDragon v${ddragonVersion}: 챔피언 ${Object.keys(champData.data).length}개 로드`);
+    }
+  } catch(e) {
+    console.error('DDragon 초기화 실패:', e.message);
+  }
+}
+
+function getChampionImage(championNameOrId) {
+  const champ = championMap[championNameOrId] || championMap[String(championNameOrId)];
+  if (champ) return `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${champ.image}`;
+  return `https://ddragon.leagueoflegends.com/cdn/${ddragonVersion}/img/champion/${championNameOrId}.png`;
+}
+
+function getChampionKorName(championNameOrId) {
+  const champ = championMap[championNameOrId] || championMap[String(championNameOrId)];
+  return champ ? champ.name : championNameOrId;
+}
+
+// LP를 통합 수치로 변환 (그래프용)
+function lpToAbsolute(tier, rank, lp) {
+  const tiers = { 'IRON': 0, 'BRONZE': 400, 'SILVER': 800, 'GOLD': 1200, 'PLATINUM': 1600, 'EMERALD': 2000, 'DIAMOND': 2400, 'MASTER': 2800, 'GRANDMASTER': 2800, 'CHALLENGER': 2800 };
+  const ranks = { 'IV': 0, 'III': 100, 'II': 200, 'I': 300 };
+  const base = tiers[tier] || 0;
+  const rankOffset = (tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER') ? 0 : (ranks[rank] || 0);
+  return base + rankOffset + (lp || 0);
+}
+
+// 보상 계산
+function calculateReward() {
+  const s = lolState.session;
+  const totalGames = s.startWins + s.startLosses + s.gamesPlayed;
+  const currentWins = lolState.rank.wins;
+  const sessionWins = currentWins - s.startWins;
+  const sessionGames = s.gamesPlayed;
+  const winRate = sessionGames > 0 ? (sessionWins / sessionGames * 100) : 0;
+  const isMaster = ['MASTER', 'GRANDMASTER', 'CHALLENGER'].includes(lolState.rank.tier);
+
+  let masterReward = 0;
+  if (isMaster) {
+    const cfg = lolState.rewardConfig;
+    if (winRate >= 90) masterReward = cfg.master90;
+    else if (winRate >= 80) masterReward = cfg.master80;
+    else if (winRate >= 70) masterReward = cfg.master70;
+    else if (winRate >= 60) masterReward = cfg.master60;
+  }
+
+  lolState.reward.masterReward = masterReward;
+  lolState.reward.totalReward = masterReward + lolState.reward.missionReward;
+  return lolState.reward;
+}
+
+// 매치 데이터 처리
+function processMatch(match) {
+  const puuid = lolState.config.puuid;
+  const participant = match.info.participants.find(p => p.puuid === puuid);
+  if (!participant) return null;
+
+  const champId = participant.championId;
+  const champName = participant.championName;
+  const champKor = getChampionKorName(champName);
+  const champImage = getChampionImage(champName);
+
+  const result = {
+    matchId: match.metadata.matchId,
+    win: participant.win,
+    championName: champName,
+    championKor: champKor,
+    championImage: champImage,
+    kills: participant.kills,
+    deaths: participant.deaths,
+    assists: participant.assists,
+    cs: participant.totalMinionsKilled + participant.neutralMinionsKilled,
+    duration: match.info.gameDuration,
+    gameCreation: match.info.gameCreation,
+    kda: participant.deaths === 0 ? 'Perfect' : ((participant.kills + participant.assists) / participant.deaths).toFixed(2),
+  };
+  return result;
+}
+
+function updateChampionStats(matchData) {
+  const name = matchData.championName;
+  if (!lolState.championStats[name]) {
+    lolState.championStats[name] = { wins: 0, losses: 0, kills: 0, deaths: 0, assists: 0, games: 0, image: matchData.championImage, korName: matchData.championKor };
+  }
+  const s = lolState.championStats[name];
+  s.games++;
+  if (matchData.win) s.wins++; else s.losses++;
+  s.kills += matchData.kills;
+  s.deaths += matchData.deaths;
+  s.assists += matchData.assists;
+}
+
+function updateSession(matchData) {
+  lolState.session.gamesPlayed++;
+  if (matchData.win) {
+    if (lolState.session.streakType === 'win') lolState.session.currentStreak++;
+    else { lolState.session.streakType = 'win'; lolState.session.currentStreak = 1; }
+  } else {
+    if (lolState.session.streakType === 'lose') lolState.session.currentStreak++;
+    else { lolState.session.streakType = 'lose'; lolState.session.currentStreak = 1; }
+  }
+}
+
+// 10초 폴링
+async function pollLolData() {
+  if (!lolState.config.trackingActive || !lolState.config.puuid || !RIOT_API_KEY) return;
+  try {
+    // 1. 현재 게임중 확인
+    const activeGame = await getActiveGame(lolState.config.puuid);
+    if (activeGame) {
+      const me = activeGame.participants.find(p => p.puuid === lolState.config.puuid);
+      lolState.liveGame = {
+        championName: me ? me.championId : '',
+        championKor: me ? getChampionKorName(String(me.championId)) : '',
+        championImage: me ? getChampionImage(String(me.championId)) : '',
+        gameStartTime: activeGame.gameStartTime,
+        gameLength: activeGame.gameLength,
+        participants: activeGame.participants.map(p => ({
+          teamId: p.teamId,
+          championId: p.championId,
+          championImage: getChampionImage(String(p.championId)),
+          championKor: getChampionKorName(String(p.championId)),
+          summonerName: p.riotId || p.summonerName || ''
+        }))
+      };
+      broadcast('lolLiveGame', lolState.liveGame);
+    } else if (lolState.liveGame) {
+      lolState.liveGame = null;
+      broadcast('lolLiveGame', null);
+    }
+
+    // 2. 랭크/LP 확인
+    const league = await getLeagueByPuuid(lolState.config.puuid);
+    if (league) {
+      const oldLp = lpToAbsolute(lolState.rank.tier, lolState.rank.rank, lolState.rank.lp);
+      lolState.rank.tier = league.tier;
+      lolState.rank.rank = league.rank;
+      lolState.rank.lp = league.leaguePoints;
+      lolState.rank.wins = league.wins;
+      lolState.rank.losses = league.losses;
+      lolState.rank.updatedAt = new Date().toISOString();
+      const newLp = lpToAbsolute(league.tier, league.rank, league.leaguePoints);
+      if (oldLp !== newLp) {
+        lolState.lpHistory.push({ timestamp: Date.now(), lp: newLp, tier: league.tier, rank: league.rank, rawLp: league.leaguePoints });
+        if (lolState.lpHistory.length > 500) lolState.lpHistory = lolState.lpHistory.slice(-500);
+        broadcast('lolRank', lolState.rank);
+        broadcast('lolLpHistory', lolState.lpHistory);
+      }
+    }
+
+    // 3. 새 매치 확인
+    const matchIds = await getMatchIds(lolState.config.puuid, 5);
+    if (matchIds && matchIds.length > 0) {
+      const newIds = lolState.lastMatchId
+        ? matchIds.filter(id => id !== lolState.lastMatchId && !lolState.matches.find(m => m.matchId === id))
+        : [];
+
+      for (const matchId of newIds.reverse()) {
+        try {
+          const detail = await getMatchDetail(matchId);
+          if (!detail || !detail.info) continue;
+          // 솔로랭크만
+          if (detail.info.queueId !== 420) continue;
+          const matchData = processMatch(detail);
+          if (!matchData) continue;
+
+          lolState.matches.unshift(matchData);
+          if (lolState.matches.length > 50) lolState.matches = lolState.matches.slice(0, 50);
+          updateChampionStats(matchData);
+          updateSession(matchData);
+          console.log(`🎮 새 매치: ${matchData.championKor} ${matchData.win ? '승리' : '패배'} ${matchData.kills}/${matchData.deaths}/${matchData.assists}`);
+        } catch(e) {
+          console.error(`매치 상세 조회 실패 (${matchId}):`, e.message);
+        }
+      }
+
+      if (newIds.length > 0) {
+        lolState.lastMatchId = matchIds[0];
+        calculateReward();
+        broadcast('lolMatches', lolState.matches);
+        broadcast('lolChampionStats', lolState.championStats);
+        broadcast('lolSession', lolState.session);
+        broadcast('lolReward', lolState.reward);
+      } else if (!lolState.lastMatchId) {
+        // 첫 폴링: lastMatchId만 설정
+        lolState.lastMatchId = matchIds[0];
+      }
+    }
+  } catch(e) {
+    console.error('LoL 폴링 오류:', e.message);
+  }
+}
+
+function startLolPolling() {
+  if (lolPollTimer) clearInterval(lolPollTimer);
+  if (!lolState.config.trackingActive || !RIOT_API_KEY) return;
+  console.log(`🎮 LoL 폴링 시작 (10초 간격)`);
+  pollLolData(); // 즉시 1회 실행
+  lolPollTimer = setInterval(pollLolData, 10000);
+}
+
+function stopLolPolling() {
+  if (lolPollTimer) { clearInterval(lolPollTimer); lolPollTimer = null; }
+  console.log(`🎮 LoL 폴링 중지`);
+}
+
+// 초기 매치 히스토리 로드 (설정 시 1회)
+async function loadInitialMatches() {
+  if (!lolState.config.puuid) return;
+  try {
+    const matchIds = await getMatchIds(lolState.config.puuid, 20);
+    if (!matchIds || matchIds.length === 0) return;
+
+    lolState.matches = [];
+    lolState.championStats = {};
+
+    for (const matchId of matchIds.reverse()) {
+      try {
+        const detail = await getMatchDetail(matchId);
+        if (!detail || !detail.info || detail.info.queueId !== 420) continue;
+        const matchData = processMatch(detail);
+        if (!matchData) continue;
+        lolState.matches.unshift(matchData);
+        updateChampionStats(matchData);
+      } catch(e) {
+        console.error(`초기 매치 로드 실패 (${matchId}):`, e.message);
+      }
+    }
+    if (lolState.matches.length > 50) lolState.matches = lolState.matches.slice(0, 50);
+    lolState.lastMatchId = matchIds[0];
+    console.log(`🎮 초기 매치 ${lolState.matches.length}경기 로드 완료`);
+  } catch(e) {
+    console.error('초기 매치 로드 실패:', e.message);
+  }
+}
+
+// ============================================
 // HTTP 서버
 // ============================================
 const server = http.createServer((req, res) => {
@@ -644,6 +985,10 @@ const server = http.createServer((req, res) => {
     res.write(`event: templates\ndata: ${JSON.stringify(missionTemplates)}\n\n`);
     res.write(`event: autoThreshold\ndata: ${JSON.stringify({value:autoThreshold})}\n\n`);
     missionResults.forEach(r => res.write(`event: result\ndata: ${JSON.stringify(r)}\n\n`));
+    // LoL 트래커 초기 상태
+    if (lolState.config.puuid) {
+      res.write(`event: lolFullState\ndata: ${JSON.stringify({ ...lolState, ddragonVersion })}\n\n`);
+    }
     sseClients.push(res);
     req.on('close', () => { sseClients = sseClients.filter(c=>c!==res); });
     return;
@@ -863,11 +1208,11 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/streamer-lol' && req.method === 'GET') {
     const name = url.searchParams.get('name');
     if (!name) return json({ ok: false, error: 'name 파라미터 필요' }, 400);
-    // 캐시 (10분)
+    // 캐시 (6시간)
     if (!global._lolCache) global._lolCache = new Map();
     const cacheKey = name.toLowerCase();
     const cached = global._lolCache.get(cacheKey);
-    if (cached && Date.now() - cached.ts < 600000) return json(cached.data);
+    if (cached && Date.now() - cached.ts < 21600000) return json(cached.data);
     const _https = require('https');
     const zlib = require('zlib');
     function fetchDeepLol(queryName, status) {
@@ -886,17 +1231,60 @@ const server = http.createServer((req, res) => {
         }).on('error', () => resolve(null));
       });
     }
+    function searchAutoComplete(keyword) {
+      return new Promise((resolve) => {
+        const acUrl = `https://b2c-api-cdn.deeplol.gg/summoner/pro-search-auto-complete?search_string=${encodeURIComponent(keyword)}&riot_id_tag_line=`;
+        _https.get(acUrl, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept-Encoding': 'gzip, deflate, br' } }, (resp) => {
+          let stream = resp;
+          const enc = resp.headers['content-encoding'];
+          if (enc === 'gzip') stream = resp.pipe(zlib.createGunzip());
+          else if (enc === 'deflate') stream = resp.pipe(zlib.createInflate());
+          else if (enc === 'br') stream = resp.pipe(zlib.createBrotliDecompress());
+          let data = '';
+          stream.on('data', c => data += c);
+          stream.on('end', () => {
+            try {
+              const d = JSON.parse(data);
+              if (d.streamer && d.streamer.length > 0) resolve({ player_name: d.streamer[0].player_name, status: 'streamer' });
+              else if (d.pro && d.pro.length > 0) resolve({ player_name: d.pro[0].player_name, status: 'pro' });
+              else resolve(null);
+            } catch(e) { resolve(null); }
+          });
+          stream.on('error', () => resolve(null));
+        }).on('error', () => resolve(null));
+      });
+    }
     (async () => {
       try {
         const ok = (r) => r && r.account_list && r.account_list.length > 0;
         const names = [name];
-        const cleaned = name.replace(/[^가-힣a-zA-Z0-9]+$/g, '').trim();
+        const cleaned = name.replace(/^[^가-힣a-zA-Z0-9]+/, '').replace(/[^가-힣a-zA-Z0-9]+$/g, '').trim();
         if (cleaned && cleaned !== name) names.push(cleaned);
+        const korOnly = name.replace(/[^가-힣]/g, '');
+        if (korOnly.length >= 2 && korOnly !== name && korOnly !== cleaned) names.push(korOnly);
+        // 1단계: 직접 조회
         for (const status of ['streamer', 'pro']) {
           for (const n of names) {
             const r = await fetchDeepLol(n, status);
             if (ok(r)) { global._lolCache.set(cacheKey, { ts: Date.now(), data: r }); return json(r); }
           }
+        }
+        // 2단계: auto-complete
+        let found = null;
+        for (const n of names) {
+          found = await searchAutoComplete(n);
+          if (found) break;
+        }
+        // 3단계: 접두사 축소
+        if (!found) {
+          const base = korOnly.length >= 2 ? korOnly : (cleaned || name);
+          for (let len = base.length - 1; len >= 2 && !found; len--) {
+            found = await searchAutoComplete(base.substring(0, len));
+          }
+        }
+        if (found) {
+          const r = await fetchDeepLol(found.player_name, found.status);
+          if (ok(r)) { global._lolCache.set(cacheKey, { ts: Date.now(), data: r }); return json(r); }
         }
         json({ account_list: [], searchName: name });
       } catch(e) { json({ account_list: [], searchName: name, error: e.message }); }
@@ -1136,8 +1524,265 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // ============================================
+  // LoL 트래커 페이지 + API
+  // ============================================
+  if (url.pathname === '/lol') {
+    fs.readFile(path.join(__dirname, 'lol.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+  if (url.pathname === '/lol-overlay') {
+    fs.readFile(path.join(__dirname, 'lol-overlay.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
+  // LoL 전체 상태
+  if (url.pathname === '/api/lol' && req.method === 'GET') {
+    return json({ ok: true, ...lolState, ddragonVersion });
+  }
+
+  // LoL Riot ID 설정 + 추적 시작
+  if (url.pathname === '/api/lol/config' && req.method === 'POST') {
+    body().then(async d => {
+      try {
+        const gameName = (d.gameName || '').trim();
+        const tagLine = (d.tagLine || '').trim();
+        if (!gameName || !tagLine) return json({ ok: false, error: 'gameName, tagLine 필수' }, 400);
+        if (!RIOT_API_KEY) return json({ ok: false, error: 'RIOT_API_KEY 미설정' }, 400);
+
+        // Account 조회
+        const account = await getAccountByRiotId(gameName, tagLine);
+        if (!account) return json({ ok: false, error: '소환사를 찾을 수 없습니다' }, 404);
+
+        lolState.config.gameName = account.gameName || gameName;
+        lolState.config.tagLine = account.tagLine || tagLine;
+        lolState.config.puuid = account.puuid;
+        lolState.config.trackingActive = true;
+
+        // 랭크 조회
+        const league = await getLeagueByPuuid(account.puuid);
+        if (league) {
+          lolState.rank = { tier: league.tier, rank: league.rank, lp: league.leaguePoints, wins: league.wins, losses: league.losses, updatedAt: new Date().toISOString() };
+          // 세션 초기화
+          lolState.session = { startTier: league.tier, startRank: league.rank, startLp: league.leaguePoints, startWins: league.wins, startLosses: league.losses, startedAt: new Date().toISOString(), gamesPlayed: 0, currentStreak: 0, streakType: '' };
+          // LP 히스토리 초기값
+          lolState.lpHistory.push({ timestamp: Date.now(), lp: lpToAbsolute(league.tier, league.rank, league.leaguePoints), tier: league.tier, rank: league.rank, rawLp: league.leaguePoints });
+        }
+
+        // 초기 매치 로드
+        await loadInitialMatches();
+        calculateReward();
+        saveData();
+
+        broadcast('lolFullState', { ...lolState, ddragonVersion });
+        startLolPolling();
+
+        console.log(`🎮 LoL 추적 시작: ${lolState.config.gameName}#${lolState.config.tagLine} (${lolState.rank.tier} ${lolState.rank.rank} ${lolState.rank.lp}LP)`);
+        json({ ok: true, config: lolState.config, rank: lolState.rank });
+      } catch(e) {
+        console.error('LoL 설정 오류:', e);
+        json({ ok: false, error: e.message }, 500);
+      }
+    }); return;
+  }
+
+  // LoL 추적 시작/중지
+  if (url.pathname === '/api/lol/tracking' && req.method === 'POST') {
+    body().then(d => {
+      if (d.active) {
+        lolState.config.trackingActive = true;
+        startLolPolling();
+      } else {
+        lolState.config.trackingActive = false;
+        stopLolPolling();
+      }
+      saveData();
+      broadcast('lolConfig', lolState.config);
+      json({ ok: true, trackingActive: lolState.config.trackingActive });
+    }); return;
+  }
+
+  // LoL 세션 리셋
+  if (url.pathname === '/api/lol/reset-session' && req.method === 'POST') {
+    lolState.session = {
+      startTier: lolState.rank.tier, startRank: lolState.rank.rank, startLp: lolState.rank.lp,
+      startWins: lolState.rank.wins, startLosses: lolState.rank.losses,
+      startedAt: new Date().toISOString(), gamesPlayed: 0, currentStreak: 0, streakType: ''
+    };
+    lolState.lpHistory = [{ timestamp: Date.now(), lp: lpToAbsolute(lolState.rank.tier, lolState.rank.rank, lolState.rank.lp), tier: lolState.rank.tier, rank: lolState.rank.rank, rawLp: lolState.rank.lp }];
+    lolState.championStats = {};
+    lolState.matches = [];
+    lolState.reward = { masterReward: 0, missionReward: lolState.reward.missionReward, totalReward: lolState.reward.missionReward };
+    saveData();
+    broadcast('lolFullState', { ...lolState, ddragonVersion });
+    json({ ok: true });
+    return;
+  }
+
+  // 대결미션 보상 수동 입력
+  if (url.pathname === '/api/lol/mission-reward' && req.method === 'POST') {
+    body().then(d => {
+      lolState.reward.missionReward = parseInt(d.amount) || 0;
+      calculateReward();
+      saveData();
+      broadcast('lolReward', lolState.reward);
+      json({ ok: true, reward: lolState.reward });
+    }); return;
+  }
+
+  // 보상 기준 설정
+  if (url.pathname === '/api/lol/reward-config' && req.method === 'POST') {
+    body().then(d => {
+      if (d.master90 !== undefined) lolState.rewardConfig.master90 = parseInt(d.master90) || 0;
+      if (d.master80 !== undefined) lolState.rewardConfig.master80 = parseInt(d.master80) || 0;
+      if (d.master70 !== undefined) lolState.rewardConfig.master70 = parseInt(d.master70) || 0;
+      if (d.master60 !== undefined) lolState.rewardConfig.master60 = parseInt(d.master60) || 0;
+      calculateReward();
+      saveData();
+      broadcast('lolReward', lolState.reward);
+      json({ ok: true, rewardConfig: lolState.rewardConfig });
+    }); return;
+  }
+
+  // ============================================
+  // FA 드래프트
+  // ============================================
+  if (url.pathname === '/draft' || url.pathname === '/fa') {
+    try {
+      const html = fs.readFileSync(path.join(__dirname, 'draft.html'), 'utf-8');
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    } catch(e) { json({error:'draft.html not found'}, 404); }
+    return;
+  }
+
+  // ===== Draft Players (캐시 시스템) =====
+  if (url.pathname === '/api/draft/players' && req.method === 'GET') {
+    // 캐시가 있으면 바로 응답 (30초 유효)
+    if (global._draftCache && Date.now() - global._draftCache.ts < 30000) {
+      return json(global._draftCache.data);
+    }
+    // 캐시가 만료됐지만 있으면 일단 응답하고 백그라운드 갱신
+    if (global._draftCache) {
+      json(global._draftCache.data);
+      if (!global._draftFetching) _refreshDraftCache();
+      return;
+    }
+    // 캐시가 아예 없으면 fetch 후 응답
+    _refreshDraftCache().then(result => json(result)).catch(err => json({ error: err.message }, 500));
+    return;
+  }
+
   json({error:'Not Found'}, 404);
-});
+}); // end of server request handler
+
+// ===== Draft 캐시 갱신 함수 =====
+const _draftPosMap = {1:'탑',2:'정글',3:'미드',4:'원딜',5:'서폿'};
+const _draftExtraPlayers = [
+  { name:'김민교.', position:'미드', score:43.2, userId:'phonics1', highTier:'', gameNick:'사나이묵직한주먹#산 본', image:'https://profile.img.sooplive.co.kr/LOGO/ph/phonics1/phonics1.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'클리드', position:'정글', score:65, userId:'xoals137', highTier:'', gameNick:'radiohead#kr1', image:'https://profile.img.sooplive.co.kr/LOGO/xo/xoals137/xoals137.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'최기명', position:'원딜', score:64.2, userId:'chlrlaud1', highTier:'', gameNick:'airline#a a', image:'https://profile.img.sooplive.co.kr/LOGO/ch/chlrlaud1/chlrlaud1.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'수피', position:'원딜', score:21.4, userId:'lovely5959', highTier:'', gameNick:'저때문에화났나유#kr1', image:'https://profile.img.sooplive.co.kr/LOGO/lo/lovely5959/lovely5959.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'미스틱', position:'원딜', score:62.7, userId:'m2stic', highTier:'', gameNick:'진철수아빠#kr1', image:'https://profile.img.sooplive.co.kr/LOGO/m2/m2stic/m2stic.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'엽동', position:'원딜', score:38.3, userId:'pingpong21', highTier:'', gameNick:'엽떡이#엽동이', image:'https://profile.img.sooplive.co.kr/LOGO/pi/pingpong21/pingpong21.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'장지수', position:'미드', score:23.1, userId:'iamquaddurup', highTier:'', gameNick:'보아뱀#bam', image:'https://profile.img.sooplive.co.kr/LOGO/ia/iamquaddurup/iamquaddurup.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'안녕수야', position:'정글', score:34.1, userId:'tntntn13', highTier:'', gameNick:'청사과#그린애플', image:'https://profile.img.sooplive.co.kr/LOGO/tn/tntntn13/tntntn13.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'해기', position:'탑', score:30.6, userId:'he0901', highTier:'', gameNick:'달기#102', image:'https://profile.img.sooplive.co.kr/LOGO/he/he0901/he0901.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'디임', position:'탑', score:11, userId:'qpqpro', highTier:'', gameNick:'무디임#kr1', image:'https://profile.img.sooplive.co.kr/LOGO/qp/qpqpro/qpqpro.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'마린', position:'탑', score:63.1, userId:'chyarlmanu', highTier:'', gameNick:'marin#kr1', image:'https://profile.img.sooplive.co.kr/LOGO/ch/chyarlmanu/chyarlmanu.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'엊우진', position:'탑', score:29.3, userId:'oox00x', highTier:'', gameNick:'귤하나먹자#111', image:'https://profile.img.sooplive.co.kr/LOGO/oo/oox00x/oox00x.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'버돌', position:'탑', score:67.5, userId:'nohtaeyoon', highTier:'', gameNick:'버돌맨#1225', image:'https://profile.img.sooplive.co.kr/LOGO/no/nohtaeyoon/nohtaeyoon.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'오아', position:'탑', score:14, userId:'legendhyuk', highTier:'', gameNick:'오아#top', image:'https://profile.img.sooplive.co.kr/LOGO/le/legendhyuk/legendhyuk.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'뀨삐', position:'미드', score:36, userId:'loraangel', highTier:'', gameNick:'뀨삐#1999', image:'https://profile.img.sooplive.co.kr/LOGO/lo/loraangel/loraangel.jpg', likeCnt:0, grade:0, broading:false },
+  { name:'이경민', position:'미드', score:41.6, userId:'rudals5467', highTier:'', gameNick:'차가운하마#kr1', image:'https://profile.img.sooplive.co.kr/LOGO/ru/rudals5467/rudals5467.jpg', likeCnt:0, grade:0, broading:false }
+];
+
+function _draftMapPlayer(p) {
+  return {
+    name: p.userNick, position: _draftPosMap[p.positionIdx] || '?', score: p.bjmatchPoint,
+    userId: p.userId, highTier: p.highTier || '', gameNick: p.gameNick || '',
+    image: p.userId ? 'https://profile.img.sooplive.co.kr/LOGO/' + p.userId.slice(0,2) + '/' + p.userId + '/' + p.userId + '.jpg' : '',
+    likeCnt: p.likeCnt || 0, grade: p.grade || 0, broading: p.broading === 'Y'
+  };
+}
+
+function _draftFetchPage(pageNo, seasonIdx) {
+  return new Promise((resolve, reject) => {
+    const postData = JSON.stringify({
+      seasonIdx, orderType:'point_desc', filter:[], searchBjNick:'',
+      minPoint:0, maxPoint:999, positionIdx:'', pageNo, perPageNo:200
+    });
+    const opts = {
+      hostname: 'gpapi.sooplive.co.kr', path: '/api/v1/bjmatchfa/fa/list', method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Content-Length': Buffer.byteLength(postData) }
+    };
+    const req2 = https.request(opts, r2 => {
+      let body = '';
+      r2.on('data', c => body += c);
+      r2.on('end', () => { try { const d = JSON.parse(body); if (d.result === 1 && d.data) resolve(d.data); else reject(new Error(d.message || 'API error')); } catch(e) { reject(e); } });
+    });
+    req2.on('error', reject);
+    req2.write(postData);
+    req2.end();
+  });
+}
+
+async function _refreshDraftCache() {
+  global._draftFetching = true;
+  try {
+    const data = await _draftFetchPage(1, 22);
+    let allList = (data.faList || []).map(_draftMapPlayer);
+    const total = data.totalCount || 0;
+    const counts = data.positionCountMap || {};
+    if (total > 200) {
+      const pages = Math.ceil(total / 200);
+      for (let pg = 2; pg <= pages; pg++) {
+        try { const d2 = await _draftFetchPage(pg, 22); allList = allList.concat((d2.faList || []).map(_draftMapPlayer)); } catch(e) { break; }
+      }
+    }
+    // 수동 추가 선수 병합 (userId로 중복 제거 - FA 등록되면 자동 제외)
+    // 방송 상태 체크
+    const liveSet = new Set();
+    try {
+      const liveChecks = _draftExtraPlayers.filter(ep => !allList.find(p => p.userId === ep.userId)).map(ep =>
+        new Promise(resolve => {
+          https.get(`https://chapi.sooplive.co.kr/api/${ep.userId}/station`, { headers: { 'User-Agent': 'Mozilla/5.0' } }, r => {
+            let b = ''; r.on('data', c => b += c); r.on('end', () => {
+              try { const d = JSON.parse(b); if (d.broad) liveSet.add(ep.userId); } catch(e) {}
+              resolve();
+            });
+          }).on('error', () => resolve());
+        })
+      );
+      await Promise.all(liveChecks);
+    } catch(e) {}
+    _draftExtraPlayers.forEach(ep => {
+      if (!allList.find(p => p.userId === ep.userId)) {
+        allList.push(Object.assign({}, ep, { broading: liveSet.has(ep.userId) }));
+      }
+    });
+    var extraCounts = {};
+    _draftExtraPlayers.forEach(ep => { if (!allList.find(p => p.userId === ep.userId && p !== ep)) { extraCounts[ep.position] = (extraCounts[ep.position]||0) + 1; } });
+    const result = { ok:true, players:allList, totalCount:allList.length, positionCounts:{
+      '탑': (counts['1']||0) + (extraCounts['탑']||0), '정글': (counts['2']||0) + (extraCounts['정글']||0), '미드': (counts['3']||0) + (extraCounts['미드']||0),
+      '원딜': (counts['4']||0) + (extraCounts['원딜']||0), '서폿': (counts['5']||0) + (extraCounts['서폿']||0)
+    }};
+    global._draftCache = { ts: Date.now(), data: result };
+    global._draftFetching = false;
+    return result;
+  } catch(e) {
+    global._draftFetching = false;
+    throw e;
+  }
+}
+
+// 서버 시작 시 캐시 미리 로드
+_refreshDraftCache().then(() => console.log('📋 Draft 캐시 로드 완료')).catch(() => {});
+
 
 // ============================================
 // 시작
@@ -1159,6 +1804,7 @@ server.listen(CONFIG.PORT, () => {
       if(k?.trim()==='STREAMER_ID'&&!CONFIG.STREAMER_ID) CONFIG.STREAMER_ID=v;
       if(k?.trim()==='SOOP_USER_ID'&&!CONFIG.SOOP_USER_ID) CONFIG.SOOP_USER_ID=v;
       if(k?.trim()==='SOOP_PASSWORD'&&!CONFIG.SOOP_PASSWORD) CONFIG.SOOP_PASSWORD=v;
+      if(k?.trim()==='RIOT_API_KEY'&&!RIOT_API_KEY&&v) RIOT_API_KEY=v;
     });
   } catch(e){}
   loadOrCreateAuth();
@@ -1167,4 +1813,11 @@ server.listen(CONFIG.PORT, () => {
 
   if (CONFIG.STREAMER_ID) connectToSoop();
   else console.log('⚠️  대시보드에서 스트리머 ID를 입력하세요\n');
+
+  // LoL 트래커 초기화
+  if (RIOT_API_KEY) {
+    initDDragon().then(() => {
+      if (lolState.config.trackingActive && lolState.config.puuid) startLolPolling();
+    });
+  }
 });
