@@ -13,9 +13,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
 /* 레이아웃 */
 .layout{display:flex;gap:16px;max-width:1600px;margin:0 auto;padding:16px}
-.sidebar{width:440px;flex-shrink:0}
+.sidebar{width:700px;flex-shrink:0}
 .main{flex:1;min-width:0}
-@media(max-width:1100px){.layout{flex-direction:column}.sidebar{width:100%}}
+@media(max-width:1280px){.layout{flex-direction:column}.sidebar{width:100%}}
 
 /* 헤더 */
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid var(--border)}
@@ -54,10 +54,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .match-side-label{font-weight:700;font-size:15px;color:var(--text2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
 .match-side-label .del-btn{font-size:10px;color:var(--red);cursor:pointer;border:none;background:none;font-family:inherit}
 .side-row{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px}
-.side-row img{width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
-.side-row .sr-pos{color:var(--accent);font-weight:700;width:30px;font-size:13px}
-.side-row .sr-name{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.side-row .sr-score{font-weight:900;color:var(--orange);font-size:19px}
+.side-row img{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border)}
+.side-row .sr-pos{color:var(--accent);font-weight:700;min-width:28px;font-size:11px;flex-shrink:0}
+.side-row .sr-name{flex:1;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:30px}
+.side-row .sr-score{font-weight:900;color:var(--orange);font-size:16px;flex-shrink:0}
 .side-total{font-weight:900;font-size:18px;text-align:right;padding-top:8px;border-top:2px solid var(--border);margin-top:6px}
 .side-total .pen{color:var(--red);font-size:13px;font-weight:700}
 .vs-divider{display:flex;align-items:center;font-weight:900;font-size:16px;color:var(--red);padding:0 6px;flex-shrink:0}
@@ -524,6 +524,7 @@ function renderConfirmBar() {
         + '<div class="cs-time">' + t + '</div><div class="cs-side">' + s + (taken ? ' (확정)' : '') + '</div></div>';
     });
   });
+  html += '<div class="confirm-slot" style="background:#22c55e;color:#fff;border-color:#22c55e;font-weight:700" onclick="fixCurrentTeam()"><div class="cs-time">⚔️</div><div class="cs-side">픽스하기</div></div>';
   document.getElementById('confirmGrid').innerHTML = html;
 }
 
@@ -680,11 +681,33 @@ function renderSideTeam(t, time, side) {
     if (lolLink) links += '<a class="sr-link-lol" href="' + lolLink + '" target="_blank" onclick="event.stopPropagation()">전적</a>';
     links += '</span>';
     var delBtn = time ? '<span class="sr-del" onclick="removeRosterPlayer(\'' + time + '\',\'' + side + '\',\'' + pos + '\')" title="제거">✕</span>' : '';
-    h += '<div class="side-row"><img src="' + (p.image || 'icon.png') + '" onerror="this.src=\'icon.png\'"><span class="sr-pos">' + pos + '</span><span class="sr-name">' + p.name + '</span>' + links + '<span class="sr-score">' + p.score + '</span>' + delBtn + '</div>';
+    var scoreStr = p.score % 1 === 0 ? p.score : p.score.toFixed(1);
+    h += '<div class="side-row"><img src="' + (p.image || 'icon.png') + '" onerror="this.src=\'icon.png\'"><span class="sr-pos">' + pos + '</span><span class="sr-name">' + p.name + '</span>' + links + '<span class="sr-score">' + scoreStr + '</span>' + delBtn + '</div>';
   });
   var pen = t._penalty || 0;
   h += '<div class="side-total">' + (total % 1 === 0 ? total : total.toFixed(1)) + (pen > 0 ? ' <span class="pen">+' + pen + ' 패널티 = ' + (total + pen) + '</span>' : '') + '</div>';
   return h;
+}
+
+function fixCurrentTeam() {
+  if (!isTeamFull()) return alert('5명을 먼저 선택하세요.');
+  var teamName = prompt('이 팀의 이름을 입력하세요 (예: 우리팀, 상대팀 이름 등):', '');
+  if (teamName === null) return;
+  if (!teamName.trim()) teamName = '미확인';
+  var members = [];
+  POSITIONS.forEach(function(pos) {
+    var p = team[pos];
+    if (p) members.push({ name:p.name, position:pos, score:p.score, userId:p.userId||'', gameNick:p.gameNick||'', image:p.image||'' });
+  });
+  var total = members.reduce(function(s,m){ return s + (m.score||0); }, 0);
+  var token = localStorage.getItem('mk_token') || '';
+  fetch('/api/scrim/fix-team', {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body: JSON.stringify({ teamName:teamName.trim(), members:members, totalScore:total })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) alert('"' + teamName.trim() + '" 팀 픽스 완료! (' + total.toFixed(1) + '점)');
+    else alert('오류: ' + (d.error || '저장 실패'));
+  }).catch(function(e) { alert('네트워크 오류: ' + e.message); });
 }
 
 function renderAll() { renderBudget(); renderSlots(); renderPosTabs(); renderPlayers(); renderConfirmBar(); renderSidebar(); }
