@@ -1205,8 +1205,8 @@ function renderBody() {
       dn.textContent = cell.d;
       dayCell.appendChild(dn);
 
-      // 이벤트 배너 공간 (같은 주에 이벤트가 있으면 모든 셀에 동일 여백)
-      if (numRows > 0) {
+      // 이벤트 배너 공간 (해당 날짜에 이벤트가 있는 셀만 여백 추가)
+      if (numRows > 0 && colHasEvent[idx]) {
         const evSpace = document.createElement('div');
         evSpace.className = 'day-event-space';
         evSpace.style.minHeight = (numRows * 24) + 'px';
@@ -1266,7 +1266,7 @@ function buildEventBars(wk) {
   const wEnd   = dk(wk[6].y, wk[6].m, wk[6].d);
 
   const hits = state.events.filter(ev => ev.startDate <= wEnd && ev.endDate >= wStart);
-  if (!hits.length) return { barEls: [], numRows: 0 };
+  if (!hits.length) return { barEls: [], numRows: 0, colHasEvent: [false,false,false,false,false,false,false] };
 
   const MAX_VISIBLE_ROWS = state.maxEventRows || 3; // 이벤트 바 최대 줄 수 (이미지 공간 확보)
 
@@ -1348,8 +1348,14 @@ function buildEventBars(wk) {
     });
   }
 
+  // 각 컬럼에 이벤트가 있는지 추적
+  const colHasEvent = [false,false,false,false,false,false,false];
+  withCols.forEach(ev => {
+    for (let c = ev.sc; c <= ev.ec; c++) colHasEvent[c] = true;
+  });
+
   const numRows = Math.min(totalRows, MAX_VISIBLE_ROWS);
-  return { barEls, numRows };
+  return { barEls, numRows, colHasEvent };
 }
 
 // ===== DAY MODAL =====
