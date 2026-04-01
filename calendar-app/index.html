@@ -221,10 +221,11 @@ body {
 
 .day-image-item { margin-top: 3px; flex: 1 1 0; min-height: 0; overflow: hidden; }
 .day-image-item img {
-  width: 100%;
+  max-width: 100%;
   max-height: 100%;
+  width: auto;
+  height: auto;
   border-radius: 4px;
-  object-fit: contain;
   display: block;
 }
 .day-image-caption {
@@ -2248,42 +2249,12 @@ async function exportAsPng(range) {
     ? document.getElementById('calendar-container')
     : document.getElementById('calendar-wrapper');
   try {
-    // html2canvas가 object-fit:contain을 지원 안 하므로 수동 계산
-    const imgs = target.querySelectorAll('.day-image-item img');
-    const origStyles = [];
-    imgs.forEach(img => {
-      origStyles.push({ w: img.style.width, h: img.style.height, of: img.style.objectFit, mh: img.style.maxHeight });
-      const parent = img.parentElement;
-      const pw = parent.clientWidth;
-      const ph = parent.clientHeight;
-      if (img.naturalWidth && img.naturalHeight && pw && ph) {
-        const imgR = img.naturalWidth / img.naturalHeight;
-        const parR = pw / ph;
-        let w, h;
-        if (imgR > parR) { w = pw; h = pw / imgR; }
-        else { h = ph; w = ph * imgR; }
-        img.style.width = w + 'px';
-        img.style.height = h + 'px';
-        img.style.objectFit = 'fill';
-        img.style.maxHeight = 'none';
-      }
-    });
-
     const canvas = await html2canvas(target, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: null,
     });
-
-    // 원래 스타일 복원
-    imgs.forEach((img, i) => {
-      img.style.width = origStyles[i].w;
-      img.style.height = origStyles[i].h;
-      img.style.objectFit = origStyles[i].of;
-      img.style.maxHeight = origStyles[i].mh;
-    });
-
     toolbar.style.display = '';
     exportBtn.style.display = '';
     const link = document.createElement('a');
