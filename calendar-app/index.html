@@ -6,7 +6,7 @@
 <title>2026년 김민교 일정 캘린더</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
 :root {
   --bg: #080f0a;
@@ -110,7 +110,6 @@ body {
   margin: 0 auto;
   background: var(--card);
   border-radius: 10px;
-  overflow: hidden;
   border: 1px solid var(--green2);
   box-shadow: 0 4px 32px rgba(34,197,94,0.15), 0 2px 8px rgba(0,0,0,0.5);
 }
@@ -189,8 +188,6 @@ body {
 }
 .day-cell-unified:last-child { border-right: none; }
 .day-cell-unified:hover { background: rgba(74,222,128,0.07); }
-.day-cell-unified.today { background: rgba(34,197,94,0.08); }
-.day-cell-unified.today:hover { background: rgba(34,197,94,0.13); }
 .day-cell-unified.other-month { opacity: 0.2; }
 
 .day-event-space { pointer-events: none; flex-shrink: 0; }
@@ -208,16 +205,12 @@ body {
   color: var(--text);
 }
 .day-cell-unified.today .date-num {
-  background: var(--green2);
-  color: #000;
   font-weight: 900;
 }
 .day-cell-unified.sun .date-num { color: #f87171; }
 .day-cell-unified.sat .date-num { color: #60a5fa; }
-.day-cell-unified.today.sun .date-num,
-.day-cell-unified.today.sat .date-num { color: #000; }
 
-.day-items { display: flex; flex-direction: column; gap: 2px; overflow: hidden; flex: 1; min-height: 0; }
+.day-items { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow: hidden; }
 
 .day-text-item {
   font-size: 11px;
@@ -226,12 +219,12 @@ body {
   word-break: keep-all;
 }
 
-.day-image-item { margin-top: 3px; }
+.day-image-item { margin-top: 3px; flex: 1 1 0; min-height: 0; overflow: hidden; }
 .day-image-item img {
   width: 100%;
+  max-height: 100%;
   border-radius: 4px;
   object-fit: contain;
-  max-height: 100%;
   display: block;
 }
 .day-image-caption {
@@ -703,6 +696,7 @@ select.form-input { cursor: pointer; }
     </div>
     <div style="display:flex; gap:8px">
       <button class="btn btn-primary" onclick="saveEvent()" style="flex:1">일정 저장</button>
+      <button class="btn btn-secondary" onclick="saveDayData(); closeDayModal();" style="flex-shrink:0">닫기</button>
       <button class="btn btn-secondary" id="event-bulk-color-btn" onclick="bulkChangeColor()" style="display:none; font-size:11px;">이 색상으로 일괄 변경</button>
       <button class="btn btn-danger" id="event-delete-btn" onclick="deleteCurrentEvent()" style="display:none">삭제</button>
     </div>
@@ -1666,7 +1660,12 @@ function saveEvent() {
   const textColor = tc === 'white' ? '#ffffff' : '#000000';
   const isEditing = !!currentEventId;
 
-  if (!text) { toast('일정 이름을 입력해주세요'); return; }
+  if (!text) {
+    // 텍스트 없으면 이미지/콘텐츠만 저장하고 닫기
+    saveDayData();
+    closeDayModal();
+    return;
+  }
   if (!startDate || !endDate) { toast('날짜를 선택해주세요'); return; }
   if (startDate > endDate) { toast('종료일이 시작일보다 빠릅니다'); return; }
 
@@ -2249,17 +2248,49 @@ async function exportAsPng(range) {
     ? document.getElementById('calendar-container')
     : document.getElementById('calendar-wrapper');
   try {
-    const dataUrl = await htmlToImage.toPng(target, {
-      pixelRatio: 2,
-      cacheBust: true,
+    // html2canvas가 object-fit:contain을 지원 안 하므로 수동 계산
+    const imgs = target.querySelectorAll('.day-image-item img');
+    const origStyles = [];
+    imgs.forEach(img => {
+      origStyles.push({ w: img.style.width, h: img.style.height, of: img.style.objectFit, mh: img.style.maxHeight });
+      const parent = img.parentElement;
+      const pw = parent.clientWidth;
+      const ph = parent.clientHeight;
+      if (img.naturalWidth && img.naturalHeight && pw && ph) {
+        const imgR = img.naturalWidth / img.naturalHeight;
+        const parR = pw / ph;
+        let w, h;
+        if (imgR > parR) { w = pw; h = pw / imgR; }
+        else { h = ph; w = ph * imgR; }
+        img.style.width = w + 'px';
+        img.style.height = h + 'px';
+        img.style.objectFit = 'fill';
+        img.style.maxHeight = 'none';
+      }
     });
+
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: null,
+    });
+
+    // 원래 스타일 복원
+    imgs.forEach((img, i) => {
+      img.style.width = origStyles[i].w;
+      img.style.height = origStyles[i].h;
+      img.style.objectFit = origStyles[i].of;
+      img.style.maxHeight = origStyles[i].mh;
+    });
+
     toolbar.style.display = '';
     exportBtn.style.display = '';
     const link = document.createElement('a');
     const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
     const suffix = range === 'calendar' ? '_달력만' : '';
     link.download = `캘린더_${state.year}년_${MONTHS[state.month-1]}${suffix}.png`;
-    link.href = dataUrl;
+    link.href = canvas.toDataURL('image/png');
     link.click();
     toast('이미지로 저장됨!');
   } catch(e) {
