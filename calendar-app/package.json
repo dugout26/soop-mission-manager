@@ -1,0 +1,12 @@
+{
+  "name": "mk-calendar",
+  "version": "1.0.0",
+  "description": "MK 캘린더 - 내부 일정 관리",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
