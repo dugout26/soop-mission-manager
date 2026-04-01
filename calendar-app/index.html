@@ -1283,6 +1283,9 @@ function buildEventBars(wk) {
     return { ...ev, sc, ec };
   });
 
+  // 시작열 → 끝열(넓은것 우선) 순으로 정렬하여 row 배정 최적화
+  withCols.sort((a, b) => a.sc - b.sc || (b.ec - b.sc) - (a.ec - a.sc));
+
   // Assign rows (greedy, no collision)
   const rowEnds = [];
   const rows = withCols.map(ev => {
