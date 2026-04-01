@@ -1175,7 +1175,7 @@ function renderBody() {
     weekDiv.className = 'week-row';
 
     // Calculate event bars for this week
-    const { barEls, numRows, colHasEvent } = buildEventBars(wk);
+    const { barEls, colRows, colHasEvent } = buildEventBars(wk);
 
     // CSS grid: 7 columns, single row (1fr)
     // Each day-cell spans all rows. Event bars overlay on top.
@@ -1205,11 +1205,11 @@ function renderBody() {
       dn.textContent = cell.d;
       dayCell.appendChild(dn);
 
-      // 이벤트 배너 공간 (해당 날짜에 이벤트가 있는 셀만 여백 추가)
-      if (numRows > 0 && colHasEvent[idx]) {
+      // 이벤트 배너 공간 (컬럼별 독립 높이)
+      if (colRows[idx] > 0) {
         const evSpace = document.createElement('div');
         evSpace.className = 'day-event-space';
-        evSpace.style.minHeight = (numRows * 24) + 'px';
+        evSpace.style.minHeight = (colRows[idx] * 24) + 'px';
         dayCell.appendChild(evSpace);
       }
 
@@ -1266,9 +1266,11 @@ function buildEventBars(wk) {
   const wEnd   = dk(wk[6].y, wk[6].m, wk[6].d);
 
   const hits = state.events.filter(ev => ev.startDate <= wEnd && ev.endDate >= wStart);
-  if (!hits.length) return { barEls: [], numRows: 0, colHasEvent: [false,false,false,false,false,false,false] };
+  const colRows = [0,0,0,0,0,0,0]; // 각 컬럼별 실제 필요한 표시 줄 수
+  const colHasEvent = [false,false,false,false,false,false,false];
+  if (!hits.length) return { barEls: [], colRows, colHasEvent };
 
-  const MAX_VISIBLE_ROWS = state.maxEventRows || 3; // 이벤트 바 최대 줄 수 (이미지 공간 확보)
+  const MAX_VISIBLE_ROWS = state.maxEventRows || 3;
 
   // Compute col positions
   const withCols = hits.map(ev => {
@@ -1283,10 +1285,10 @@ function buildEventBars(wk) {
     return { ...ev, sc, ec };
   });
 
-  // 시작열 → 끝열(넓은것 우선) 순으로 정렬하여 row 배정 최적화
-  withCols.sort((a, b) => a.sc - b.sc || (b.ec - b.sc) - (a.ec - a.sc));
+  // startDate 기준 정렬 → 같으면 넓은것(endDate 늦은것) 우선
+  withCols.sort((a, b) => a.startDate.localeCompare(b.startDate) || b.endDate.localeCompare(a.endDate));
 
-  // Assign rows (greedy, no collision)
+  // Assign rows (greedy, no collision) - 제한 없이 모든 이벤트에 row 배정
   const rowEnds = [];
   const rows = withCols.map(ev => {
     for (let r = 0; r < rowEnds.length; r++) {
@@ -1296,23 +1298,49 @@ function buildEventBars(wk) {
     return rowEnds.length - 1;
   });
 
-  const totalRows = rowEnds.length;
-  const hasOverflow = totalRows > MAX_VISIBLE_ROWS;
+  // 각 컬럼별 이벤트 수 계산
+  const colEventCount = [0,0,0,0,0,0,0];
+  withCols.forEach(ev => {
+    for (let c = ev.sc; c <= ev.ec; c++) {
+      colEventCount[c]++;
+      colHasEvent[c] = true;
+    }
+  });
 
-  // 넘치면: 마지막 줄을 "+N더보기"로 대체 → 실제 바는 MAX-1줄까지만
-  const barLimit = hasOverflow ? MAX_VISIBLE_ROWS - 1 : MAX_VISIBLE_ROWS;
+  // 컬럼별 overflow 판단: 해당 컬럼의 이벤트 수가 MAX를 넘는지
+  const colOverflow = [0,0,0,0,0,0,0];
+  const colBarLimit = [0,0,0,0,0,0,0]; // 각 컬럼별 실제 바 표시 한도
+  for (let c = 0; c < 7; c++) {
+    if (colEventCount[c] > MAX_VISIBLE_ROWS) {
+      colBarLimit[c] = MAX_VISIBLE_ROWS - 1; // 마지막줄은 +N용
+    } else {
+      colBarLimit[c] = MAX_VISIBLE_ROWS;
+    }
+  }
 
-  // 각 컬럼별 숨겨지는 이벤트 수 계산
-  const colOverflow = [0, 0, 0, 0, 0, 0, 0];
+  // 각 이벤트가 어떤 컬럼에서는 보이고 어떤 컬럼에서는 숨겨질 수 있음
+  // 이벤트별로 표시 여부 결정: 해당 이벤트가 차지하는 모든 컬럼에서 row가 barLimit 이내인지
+  // → 멀티데이 이벤트는 하나의 바로 표시되므로, 가장 많이 차지한 컬럼 기준
+  // → 간단하게: row가 해당 이벤트가 걸친 컬럼들의 최소 barLimit보다 작으면 표시
+  const barEls = [];
+  const evVisible = withCols.map((ev, i) => {
+    let minLimit = MAX_VISIBLE_ROWS;
+    for (let c = ev.sc; c <= ev.ec; c++) {
+      minLimit = Math.min(minLimit, colBarLimit[c]);
+    }
+    return rows[i] < minLimit;
+  });
+
+  // 숨겨진 이벤트 수 컬럼별 계산
   withCols.forEach((ev, i) => {
-    if (rows[i] >= barLimit) {
+    if (!evVisible[i]) {
       for (let c = ev.sc; c <= ev.ec; c++) colOverflow[c]++;
     }
   });
 
-  const barEls = [];
+  // 바 생성
   withCols.forEach((ev, i) => {
-    if (rows[i] >= barLimit) return; // 넘치는 이벤트는 바 생성 안함
+    if (!evVisible[i]) return;
 
     const bar = document.createElement('div');
     bar.className = 'event-bar';
@@ -1329,36 +1357,41 @@ function buildEventBars(wk) {
     barEls.push(bar);
   });
 
-  // 넘치는 컬럼에 "+N" 표시 (마지막 visible row 자리에)
-  if (hasOverflow) {
-    colOverflow.forEach((cnt, col) => {
-      if (cnt <= 0) return;
-      const more = document.createElement('div');
-      more.className = 'event-bar event-bar-more';
-      const leftPct = (col / 7 * 100);
-      const widthPct = (1 / 7 * 100);
-      more.style.left = `calc(${leftPct}% + 3px)`;
-      more.style.width = `calc(${widthPct}% - 6px)`;
-      more.style.top = (28 + barLimit * 24) + 'px';
-      more.textContent = `+${cnt}`;
-      more.style.background = 'rgba(255,255,255,0.1)';
-      more.style.color = 'var(--text2)';
-      more.style.fontSize = '10px';
-      more.style.justifyContent = 'center';
-      const dayKey = dk(wk[col].y, wk[col].m, wk[col].d);
-      more.onclick = e => { e.stopPropagation(); openDayModal(dayKey); };
-      barEls.push(more);
-    });
-  }
-
-  // 각 컬럼에 이벤트가 있는지 추적
-  const colHasEvent = [false,false,false,false,false,false,false];
-  withCols.forEach(ev => {
-    for (let c = ev.sc; c <= ev.ec; c++) colHasEvent[c] = true;
+  // 넘치는 컬럼에 "+N" 표시
+  colOverflow.forEach((cnt, col) => {
+    if (cnt <= 0) return;
+    const moreRow = colBarLimit[col]; // +N이 표시될 row
+    const more = document.createElement('div');
+    more.className = 'event-bar event-bar-more';
+    const leftPct = (col / 7 * 100);
+    const widthPct = (1 / 7 * 100);
+    more.style.left = `calc(${leftPct}% + 3px)`;
+    more.style.width = `calc(${widthPct}% - 6px)`;
+    more.style.top = (28 + moreRow * 24) + 'px';
+    more.textContent = `+${cnt}`;
+    more.style.background = 'rgba(255,255,255,0.1)';
+    more.style.color = 'var(--text2)';
+    more.style.fontSize = '10px';
+    more.style.justifyContent = 'center';
+    const dayKey = dk(wk[col].y, wk[col].m, wk[col].d);
+    more.onclick = e => { e.stopPropagation(); openDayModal(dayKey); };
+    barEls.push(more);
   });
 
-  const numRows = Math.min(totalRows, MAX_VISIBLE_ROWS);
-  return { barEls, numRows, colHasEvent };
+  // 각 컬럼별 실제 표시 줄 수 계산 (day-event-space 높이용)
+  for (let c = 0; c < 7; c++) {
+    if (!colHasEvent[c]) continue;
+    let maxVisibleRow = -1;
+    withCols.forEach((ev, i) => {
+      if (ev.sc <= c && c <= ev.ec && evVisible[i]) {
+        maxVisibleRow = Math.max(maxVisibleRow, rows[i]);
+      }
+    });
+    colRows[c] = maxVisibleRow + 1;
+    if (colOverflow[c] > 0) colRows[c]++; // +N 줄 추가
+  }
+
+  return { barEls, colRows, colHasEvent };
 }
 
 // ===== DAY MODAL =====
