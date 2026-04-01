@@ -1467,6 +1467,14 @@ const server = http.createServer((req, res) => {
     }); return;
   }
 
+  // 캘린더
+  if (url.pathname === '/calendar') {
+    fs.readFile(path.join(__dirname, 'calendar-app', 'index.html'), (e, d) => {
+      if(e){res.writeHead(500);res.end('err');return;}
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
+    }); return;
+  }
+
   // 명단 API - 상태 조회
   if (url.pathname === '/api/roster' && req.method === 'GET') {
     return json({ ok: true, active: rosterState.active, threshold: rosterState.threshold, multiplier: rosterState.multiplier, typeFilters: rosterState.typeFilters, endTime: rosterState.endTime, entries: rosterState.entries });
