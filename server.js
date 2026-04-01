@@ -1469,7 +1469,7 @@ const server = http.createServer((req, res) => {
 
   // 캘린더
   if (url.pathname === '/calendar') {
-    fs.readFile(path.join(__dirname, 'calendar-app', 'index.html'), (e, d) => {
+    fs.readFile(path.join(__dirname, 'calendar.html'), (e, d) => {
       if(e){res.writeHead(500);res.end('err');return;}
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
     }); return;
