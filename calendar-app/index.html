@@ -2299,38 +2299,54 @@ function closeExportModal() {
 }
 
 async function exportAsPng(range) {
-  closeExportModal();
   const btn = document.getElementById('export-btn');
-  btn.textContent = '⏳ 처리 중...';
+  btn.textContent = '⏳ 캡처 중...';
   btn.disabled = true;
-  const toolbar = document.getElementById('toolbar');
-  const exportBtn = document.getElementById('export-btn');
-  toolbar.style.display = 'none';
-  exportBtn.style.display = 'none';
-  const target = range === 'calendar'
-    ? document.getElementById('calendar-container')
-    : document.getElementById('calendar-wrapper');
   try {
-    const dataUrl = await htmlToImage.toPng(target, {
-      pixelRatio: 2,
-      cacheBust: true,
-      width: target.scrollWidth,
-      height: target.scrollHeight,
+    const resp = await fetch('/api/calendar-screenshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ state })
     });
-    toolbar.style.display = '';
-    exportBtn.style.display = '';
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: 'Unknown' }));
+      throw new Error(err.error || 'Screenshot failed');
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-    const suffix = range === 'calendar' ? '_달력만' : '';
-    link.download = `캘린더_${state.year}년_${MONTHS[state.month-1]}${suffix}.png`;
-    link.href = dataUrl;
+    link.download = `캘린더_${state.year}년_${MONTHS[state.month-1]}.png`;
+    link.href = url;
     link.click();
+    URL.revokeObjectURL(url);
     toast('이미지로 저장됨!');
   } catch(e) {
-    toolbar.style.display = '';
-    exportBtn.style.display = '';
-    toast('내보내기 실패');
     console.error(e);
+    toast('서버 캡처 실패, 클라이언트 방식으로 시도 중...');
+    // 폴백: 클라이언트 캡처
+    try {
+      const toolbar = document.getElementById('toolbar');
+      const exportBtn = document.getElementById('export-btn');
+      toolbar.style.display = 'none';
+      exportBtn.style.display = 'none';
+      const target = document.getElementById('calendar-container');
+      const dataUrl = await htmlToImage.toPng(target, {
+        pixelRatio: 2, cacheBust: true,
+        width: target.scrollWidth, height: target.scrollHeight,
+      });
+      toolbar.style.display = '';
+      exportBtn.style.display = '';
+      const link = document.createElement('a');
+      const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+      link.download = `캘린더_${state.year}년_${MONTHS[state.month-1]}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast('이미지로 저장됨! (클라이언트)');
+    } catch(e2) {
+      toast('내보내기 실패');
+      console.error(e2);
+    }
   } finally {
     btn.textContent = '이미지로 저장';
     btn.disabled = false;

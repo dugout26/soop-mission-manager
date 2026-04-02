@@ -5,6 +5,8 @@ const crypto = require('crypto');
 const { SoopClient, SoopChatEvent } = require('soop-extension');
 const { google } = require('googleapis');
 const https = require('https');
+let puppeteer;
+try { puppeteer = require('puppeteer'); } catch(e) { console.log('Puppeteer not available'); }
 let RIOT_API_KEY = process.env.RIOT_API_KEY || '';
 
 // 서버 크래시 방지 - 에러가 나도 서버가 죽지 않도록
@@ -1473,6 +1475,64 @@ const server = http.createServer((req, res) => {
       if(e){res.writeHead(500);res.end('err');return;}
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'}); res.end(d);
     }); return;
+  }
+
+  // 캘린더 스크린샷 API (Puppeteer)
+  if (url.pathname === '/api/calendar-screenshot' && req.method === 'POST') {
+    if (!puppeteer) {
+      res.writeHead(500, {'Content-Type':'application/json'});
+      res.end(JSON.stringify({ error: 'Puppeteer not available' }));
+      return;
+    }
+    let body = '';
+    req.on('data', c => body += c);
+    req.on('end', async () => {
+      try {
+        const { state: calState } = JSON.parse(body);
+        const browser = await puppeteer.launch({
+          headless: 'new',
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+        });
+        const page = await browser.newPage();
+        await page.setViewport({ width: 1200, height: 900, deviceScaleFactor: 2 });
+
+        const calUrl = `http://localhost:${PORT}/calendar`;
+        await page.goto(calUrl, { waitUntil: 'networkidle0', timeout: 15000 });
+
+        // localStorage에 state 주입 후 리로드
+        if (calState) {
+          await page.evaluate((s) => {
+            localStorage.setItem('my-calendar-v1', JSON.stringify(s));
+          }, calState);
+          await page.reload({ waitUntil: 'networkidle0', timeout: 15000 });
+        }
+
+        // 렌더링 대기
+        await page.waitForSelector('#calendar-container', { timeout: 5000 });
+        await new Promise(r => setTimeout(r, 500));
+
+        // 오늘 날짜 표시, 이미지로 저장 버튼 숨기기
+        await page.evaluate(() => {
+          const exportBtn = document.getElementById('export-btn');
+          if (exportBtn) exportBtn.style.display = 'none';
+        });
+
+        const el = await page.$('#calendar-container');
+        const screenshot = await el.screenshot({ type: 'png' });
+        await browser.close();
+
+        res.writeHead(200, {
+          'Content-Type': 'image/png',
+          'Content-Disposition': 'attachment; filename="calendar.png"'
+        });
+        res.end(screenshot);
+      } catch(e) {
+        console.error('Screenshot error:', e);
+        res.writeHead(500, {'Content-Type':'application/json'});
+        res.end(JSON.stringify({ error: e.message }));
+      }
+    });
+    return;
   }
 
   // 명단 API - 상태 조회
