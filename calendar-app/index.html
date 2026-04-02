@@ -6,7 +6,7 @@
 <title>2026년 김민교 일정 캘린더</title>
 <link rel="icon" type="image/png" href="icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Black+Han+Sans&family=Jua&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
 <style>
 :root {
   --bg: #080f0a;
@@ -110,8 +110,9 @@ body {
   margin: 0 auto;
   background: var(--card);
   border-radius: 10px;
-  border: 1px solid var(--green2);
+  border: var(--border-w, 2px) solid var(--green2);
   box-shadow: 0 4px 32px rgba(34,197,94,0.15), 0 2px 8px rgba(0,0,0,0.5);
+  overflow: visible;
 }
 
 #calendar-body {
@@ -122,7 +123,7 @@ body {
 .day-headers {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--green2);
+  border-bottom: var(--border-w, 2px) solid var(--green2);
   background: linear-gradient(135deg, #0a2016, #0f2a1a);
 }
 .day-header {
@@ -137,7 +138,7 @@ body {
 .day-header.sat { color: #60a5fa; }
 
 .week-row {
-  border-bottom: 1px solid #1a2e20;
+  border-bottom: var(--border-w, 2px) solid #1a2e20;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -178,7 +179,7 @@ body {
 /* Unified day cell (날짜번호 + 이벤트공간 + 콘텐츠 통합) */
 .day-cell-unified {
   padding: 5px 6px 6px 6px;
-  border-right: 1px solid #1a2e20;
+  border-right: var(--border-w, 2px) solid #1a2e20;
   position: relative;
   cursor: pointer;
   transition: background 0.15s;
@@ -213,13 +214,13 @@ body {
 .day-items { display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow: hidden; }
 
 .day-text-item {
-  font-size: 11px;
+  font-size: var(--fs-text, 13px);
   color: #c8d6ce;
   line-height: 1.4;
   word-break: keep-all;
 }
 
-.day-image-item { margin-top: 3px; flex: 1 1 0; min-height: 0; overflow: hidden; }
+.day-image-item { margin-top: 3px; flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .day-image-item img {
   max-width: 100%;
   max-height: 100%;
@@ -906,6 +907,16 @@ select.form-input { cursor: pointer; }
         <input type="range" id="s-max-event-rows" min="1" max="8" step="1" value="3" oninput="previewMaxEventRows(this.value)">
         <div style="text-align:right; font-size:12px; color:#aaa; margin-top:4px">최대 <span id="max-event-rows-label">3</span>줄</div>
       </div>
+      <div class="form-group">
+        <label class="form-label">텍스트 크기</label>
+        <input type="range" id="s-font-size" min="9" max="20" step="1" value="13" oninput="previewFontSize(this.value)">
+        <div style="text-align:right; font-size:12px; color:#aaa; margin-top:4px"><span id="font-size-label">13</span>px</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">셀 테두리 두께</label>
+        <input type="range" id="s-border-width" min="1" max="5" step="1" value="2" oninput="previewBorderWidth(this.value)">
+        <div style="text-align:right; font-size:12px; color:#aaa; margin-top:4px"><span id="border-width-label">2</span>px</div>
+      </div>
       <button class="btn btn-primary" onclick="saveCalSettings()" style="width:100%; margin-top:4px">적용</button>
     </div>
   </div>
@@ -922,9 +933,12 @@ select.form-input { cursor: pointer; }
       <span style="font-size:13px; color:var(--text2);">배경 색상:</span>
       <div id="lck-color-grid" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
     </div>
-    <div style="display:flex; gap:8px; margin-bottom:12px;">
+    <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center; flex-wrap:wrap;">
       <button class="btn btn-secondary" onclick="lckSelectAll(true)" style="font-size:11px;">전체 선택</button>
       <button class="btn btn-secondary" onclick="lckSelectAll(false)" style="font-size:11px;">전체 해제</button>
+      <label style="font-size:12px; color:var(--text2); display:flex; align-items:center; gap:4px; margin-left:auto; cursor:pointer;">
+        <input type="checkbox" id="lck-merge-daily" checked> 같은 날 경기 합치기
+      </label>
     </div>
     <div id="lck-matches-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
     <div style="margin-top:12px; display:flex; gap:8px;">
@@ -935,7 +949,7 @@ select.form-input { cursor: pointer; }
 </div>
 
 <div id="toast"></div>
-<button id="export-btn" onclick="showExportModal()">이미지로 저장</button>
+<button id="export-btn" onclick="exportAsPng('calendar')">이미지로 저장</button>
 
 <!-- ===== 내보내기 범위 선택 모달 ===== -->
 <div class="modal-overlay" id="export-modal-overlay">
@@ -998,8 +1012,10 @@ let state = {
   },
   events: [],
   dayData: {},
-  calendarHeight: 750,
-  maxEventRows: 3
+  calendarHeight: 1080,
+  maxEventRows: 3,
+  fontSize: 0,
+  borderWidth: 2
 };
 
 let currentDayKey = null;
@@ -1051,7 +1067,7 @@ function toast(msg) {
 function renderAll() {
   applyBackground();
   applyTitle();
-  applyCalendarHeight();
+  applyCalendarStyles();
   updateMonthDisplay();
   renderBody();
 }
@@ -1846,10 +1862,14 @@ function openSettings(tab) {
   }
 
   // 달력 설정 초기값
-  document.getElementById('s-cal-height').value = state.calendarHeight || 750;
-  document.getElementById('cal-height-label').textContent = state.calendarHeight || 750;
+  document.getElementById('s-cal-height').value = state.calendarHeight || 1080;
+  document.getElementById('cal-height-label').textContent = state.calendarHeight || 1080;
   document.getElementById('s-max-event-rows').value = state.maxEventRows || 3;
   document.getElementById('max-event-rows-label').textContent = state.maxEventRows || 3;
+  document.getElementById('s-font-size').value = state.fontSize || 13;
+  document.getElementById('font-size-label').textContent = state.fontSize || 13;
+  document.getElementById('s-border-width').value = state.borderWidth || 2;
+  document.getElementById('border-width-label').textContent = state.borderWidth || 2;
 
   selectBgType(currentBgType);
   selectTitleStyle(currentTitleStyleType);
@@ -1864,7 +1884,7 @@ function closeSettings() {
   // Revert previews
   applyBackground();
   applyTitle();
-  applyCalendarHeight();
+  applyCalendarStyles();
 }
 
 function previewCalHeight(val) {
@@ -1874,18 +1894,33 @@ function previewCalHeight(val) {
 function previewMaxEventRows(val) {
   document.getElementById('max-event-rows-label').textContent = val;
 }
+function previewFontSize(val) {
+  document.getElementById('font-size-label').textContent = val;
+  document.getElementById('calendar-container').style.setProperty('--fs-text', val + 'px');
+}
+function previewBorderWidth(val) {
+  document.getElementById('border-width-label').textContent = val;
+  document.getElementById('calendar-container').style.setProperty('--border-w', val + 'px');
+}
 function saveCalSettings() {
   state.calendarHeight = parseInt(document.getElementById('s-cal-height').value);
   state.maxEventRows = parseInt(document.getElementById('s-max-event-rows').value);
+  state.fontSize = parseInt(document.getElementById('s-font-size').value);
+  state.borderWidth = parseInt(document.getElementById('s-border-width').value);
   saveState();
-  applyCalendarHeight();
+  applyCalendarStyles();
   renderBody();
   closeSettings();
   toast('달력 설정 적용됨');
 }
-function applyCalendarHeight() {
-  const h = state.calendarHeight || 750;
+function applyCalendarStyles() {
+  const h = state.calendarHeight || 1080;
+  const fs = state.fontSize || 13;
+  const bw = state.borderWidth || 2;
+  const container = document.getElementById('calendar-container');
   document.getElementById('calendar-body').style.setProperty('--cal-height', h + 'px');
+  container.style.setProperty('--fs-text', fs + 'px');
+  container.style.setProperty('--border-w', bw + 'px');
 }
 
 function switchSettingsTab(tab) {
@@ -2203,29 +2238,56 @@ function registerLckEvents() {
   const selected = lckFetchedMatches.filter(m => m.checked);
   if (!selected.length) { toast('선택된 일정이 없습니다'); return; }
 
+  const mergeDaily = document.getElementById('lck-merge-daily').checked;
   let count = 0;
-  selected.forEach(m => {
-    // 중복 방지: 같은 날짜 + 같은 이름 이벤트 확인
-    const exists = state.events.some(ev =>
-      ev.startDate === m.date && ev.endDate === m.date && ev.text === m.customName
-    );
-    if (!exists) {
-      state.events.push({
-        id: uid(),
-        text: m.customName,
-        startDate: m.date,
-        endDate: m.date,
-        color: lckSelectedColor,
-        textColor: '#ffffff',
-      });
-      count++;
-    }
-  });
+
+  if (mergeDaily) {
+    // 같은 날짜끼리 그룹화하여 합치기
+    const byDate = {};
+    selected.forEach(m => {
+      if (!byDate[m.date]) byDate[m.date] = [];
+      byDate[m.date].push(m.customName);
+    });
+    Object.keys(byDate).forEach(date => {
+      const mergedText = byDate[date].join(' / ');
+      const exists = state.events.some(ev =>
+        ev.startDate === date && ev.endDate === date && ev.text === mergedText
+      );
+      if (!exists) {
+        state.events.push({
+          id: uid(),
+          text: mergedText,
+          startDate: date,
+          endDate: date,
+          color: lckSelectedColor,
+          textColor: '#ffffff',
+        });
+        count++;
+      }
+    });
+  } else {
+    selected.forEach(m => {
+      const exists = state.events.some(ev =>
+        ev.startDate === m.date && ev.endDate === m.date && ev.text === m.customName
+      );
+      if (!exists) {
+        state.events.push({
+          id: uid(),
+          text: m.customName,
+          startDate: m.date,
+          endDate: m.date,
+          color: lckSelectedColor,
+          textColor: '#ffffff',
+        });
+        count++;
+      }
+    });
+  }
 
   saveState();
   renderBody();
   closeLckModal();
-  toast(`${count}개 LCK 일정 등록됨` + (selected.length - count > 0 ? ` (${selected.length - count}개 중복 제외)` : ''));
+  toast(`${count}개 LCK 일정 등록됨`);
 }
 
 // ===== EXPORT =====
@@ -2249,11 +2311,11 @@ async function exportAsPng(range) {
     ? document.getElementById('calendar-container')
     : document.getElementById('calendar-wrapper');
   try {
-    const canvas = await html2canvas(target, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: null,
+    const dataUrl = await htmlToImage.toPng(target, {
+      pixelRatio: 2,
+      cacheBust: true,
+      width: target.scrollWidth,
+      height: target.scrollHeight,
     });
     toolbar.style.display = '';
     exportBtn.style.display = '';
@@ -2261,7 +2323,7 @@ async function exportAsPng(range) {
     const MONTHS = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
     const suffix = range === 'calendar' ? '_달력만' : '';
     link.download = `캘린더_${state.year}년_${MONTHS[state.month-1]}${suffix}.png`;
-    link.href = canvas.toDataURL('image/png');
+    link.href = dataUrl;
     link.click();
     toast('이미지로 저장됨!');
   } catch(e) {
